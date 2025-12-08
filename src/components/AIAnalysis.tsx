@@ -20,7 +20,8 @@ export function AIAnalysis({ photo, weddingId, onAnalysisComplete }: AIAnalysisP
     setError(null)
 
     try {
-      const photoUrl = `https://lmbuaaenceaolrspljio.supabase.co/storage/v1/object/public/wedding-photos/${photo.storage_path}`
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+      const photoUrl = `${supabaseUrl}/storage/v1/object/public/wedding-photos/${photo.storage_path}`
       const result = await analyzePhoto(photoUrl, weddingId, photo.id)
       
       if (result.success) {
@@ -29,7 +30,7 @@ export function AIAnalysis({ photo, weddingId, onAnalysisComplete }: AIAnalysisP
       } else {
         setError(result.error || 'Analysis failed')
       }
-    } catch (err) {
+    } catch {
       setError('Failed to analyze photo')
     } finally {
       setAnalyzing(false)
@@ -65,7 +66,7 @@ export function AIAnalysis({ photo, weddingId, onAnalysisComplete }: AIAnalysisP
     )
   }
 
-  if (!analysis) {
+  if (!analysis || !analysis.analysis) {
     return (
       <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-6 border border-blue-200">
         <div className="text-center">
@@ -85,7 +86,7 @@ export function AIAnalysis({ photo, weddingId, onAnalysisComplete }: AIAnalysisP
     )
   }
 
-  const { analysis: data } = analysis
+  const data = analysis.analysis
 
   return (
     <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg p-6 border border-green-200">

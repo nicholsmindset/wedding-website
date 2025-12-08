@@ -10,6 +10,7 @@ import { Mail, Plus, Users, Send, CheckCircle, XCircle, Clock, Copy, Download, E
 import { toast } from 'sonner'
 import { Wedding, Guest, RSVP, Event } from '@/lib/supabase'
 import { generateRSVPInvitationEmail } from '@/utils/emailTemplates'
+import { generateSecureToken, generateMagicLinkUrl, getTokenExpirationDate } from '@/lib/tokens'
 
 interface RSVPManagerProps {
   wedding: Wedding
@@ -23,16 +24,24 @@ interface InvitationData {
   message?: string
 }
 
+interface EmailPreviewData {
+  subject: string
+  html: string
+  text: string
+  recipient: string
+  email: string
+}
+
 export function RSVPManager({ wedding, events, onUpdate }: RSVPManagerProps) {
   const [guests, setGuests] = useState<Guest[]>([])
   const [rsvps, setRsvps] = useState<RSVP[]>([])
-  const [loading, setLoading] = useState(true)
+  const [, setLoading] = useState(true)
   const [invitationDialogOpen, setInvitationDialogOpen] = useState(false)
   const [invitations, setInvitations] = useState<InvitationData[]>([{ email: '', name: '' }])
   const [sendingInvitations, setSendingInvitations] = useState(false)
   const [selectedEvent, setSelectedEvent] = useState<string>('')
   const [previewDialogOpen, setPreviewDialogOpen] = useState(false)
-  const [previewData, setPreviewData] = useState<any>(null)
+  const [previewData, setPreviewData] = useState<EmailPreviewData | null>(null)
 
   useEffect(() => {
     fetchGuestsAndRSVPs()
@@ -85,10 +94,10 @@ export function RSVPManager({ wedding, events, onUpdate }: RSVPManagerProps) {
     }
   }
 
-  const generateMagicLink = (email: string, name: string) => {
-    const baseUrl = window.location.origin
-    const token = btoa(`${email}|${Date.now()}|${Math.random()}`) // Simple token generation
-    return `${baseUrl}/rsvp/${wedding.id}?email=${encodeURIComponent(email)}&name=${encodeURIComponent(name)}&token=${token}`
+  const generateMagicLink = (email: string): { url: string; token: string } => {
+    const token = generateSecureToken()
+    const url = generateMagicLinkUrl(wedding.id, email, token)
+    return { url, token }
   }
 
   const sendInvitations = async () => {
@@ -152,26 +161,25 @@ export function RSVPManager({ wedding, events, onUpdate }: RSVPManagerProps) {
           continue
         }
 
-        // Generate magic link
-        const magicLink = generateMagicLink(invitation.email, invitation.name)
-        
-        // In a real implementation, you'd send an email here
-        // For now, we'll just show the magic link in the console
-        console.log(`Invitation email for ${invitation.name} (${invitation.email}):`)
-        console.log(`Magic link: ${magicLink}`)
-        
-        // Store the magic link in a separate table for tracking (optional)
-        try {
-          await supabase.from('invitation_tokens').insert([{
-            wedding_id: wedding.id,
-            guest_id: guestId,
-            email: invitation.email,
-            token: magicLink.split('token=')[1],
-            expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() // 30 days
-          }])
-        } catch (error) {
-          console.error('Error storing invitation token:', error)
+        // Generate secure magic link
+        const { url: magicLink, token } = generateMagicLink(invitation.email)
+
+        // Store the invitation token in database for verification
+        const { error: tokenError } = await supabase.from('invitation_tokens').insert([{
+          wedding_id: wedding.id,
+          guest_id: guestId,
+          email: invitation.email,
+          token: token,
+          expires_at: getTokenExpirationDate(30) // 30 days
+        }])
+
+        if (tokenError) {
+          console.error('Error storing invitation token:', tokenError)
+          continue
         }
+
+        // In a real implementation, you'd send an email here via a service like SendGrid, Resend, etc.
+        console.log(`Invitation for ${invitation.name} (${invitation.email}): ${magicLink}`)
       }
 
       toast.success(`${validInvitations.length} invitations sent successfully!`)
@@ -188,10 +196,25 @@ export function RSVPManager({ wedding, events, onUpdate }: RSVPManagerProps) {
     }
   }
 
-  const copyMagicLink = (email: string, name: string) => {
-    const magicLink = generateMagicLink(email, name)
+  const copyMagicLink = async (email: string, guestId: string) => {
+    const { url: magicLink, token } = generateMagicLink(email)
+
+    // Store the new token in the database
+    const { error } = await supabase.from('invitation_tokens').insert([{
+      wedding_id: wedding.id,
+      guest_id: guestId,
+      email: email,
+      token: token,
+      expires_at: getTokenExpirationDate(30)
+    }])
+
+    if (error) {
+      toast.error('Failed to generate invitation link')
+      return
+    }
+
     navigator.clipboard.writeText(magicLink)
-    toast.success('Magic link copied to clipboard!')
+    toast.success('Invitation link copied to clipboard!')
   }
 
   const previewEmail = (invitation: InvitationData) => {
@@ -203,7 +226,8 @@ export function RSVPManager({ wedding, events, onUpdate }: RSVPManagerProps) {
     const selectedEventData = events.find(e => e.id === selectedEvent)
     if (!selectedEventData) return
 
-    const magicLink = generateMagicLink(invitation.email, invitation.name)
+    // For preview, generate a placeholder link (actual token will be created on send)
+    const { url: magicLink } = generateMagicLink(invitation.email)
     const emailContent = generateRSVPInvitationEmail({
       wedding,
       guest: { id: '', wedding_id: wedding.id, name: invitation.name, email: invitation.email, phone: null, dietary_restrictions: null, plus_one: false, created_at: '', updated_at: '' },
@@ -470,7 +494,7 @@ export function RSVPManager({ wedding, events, onUpdate }: RSVPManagerProps) {
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => copyMagicLink(guest.email, guest.name)}
+                      onClick={() => copyMagicLink(guest.email, guest.id)}
                       className="text-blue-600 hover:text-blue-700"
                     >
                       <Copy className="h-3 w-3 mr-1" />

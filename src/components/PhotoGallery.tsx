@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Photo } from '@/lib/supabase'
 import { AIAnalysis } from '@/components/AIAnalysis'
-import { X, Download, Share2, Heart, Sparkles } from 'lucide-react'
+import { X, Download, Share2, Heart } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 
 interface PhotoGalleryProps {
@@ -14,8 +14,8 @@ export function PhotoGallery({ photos, weddingId, onPhotoClick }: PhotoGalleryPr
   const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null)
 
   const getPhotoUrl = (photo: Photo) => {
-    // This would be replaced with actual Supabase Storage URL
-    return `https://lmbuaaenceaolrspljio.supabase.co/storage/v1/object/public/wedding-photos/${photo.storage_path}`
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+    return `${supabaseUrl}/storage/v1/object/public/wedding-photos/${photo.storage_path}`
   }
 
   if (photos.length === 0) {
@@ -38,10 +38,20 @@ export function PhotoGallery({ photos, weddingId, onPhotoClick }: PhotoGalleryPr
         {photos.map((photo) => (
           <div
             key={photo.id}
-            className="relative group cursor-pointer aspect-square rounded-lg overflow-hidden bg-gray-100"
+            role="button"
+            tabIndex={0}
+            aria-label={`View photo: ${photo.original_filename}`}
+            className="relative group cursor-pointer aspect-square rounded-lg overflow-hidden bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
             onClick={() => {
               setSelectedPhoto(photo)
               onPhotoClick?.(photo)
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                setSelectedPhoto(photo)
+                onPhotoClick?.(photo)
+              }
             }}
           >
             <img
@@ -52,7 +62,7 @@ export function PhotoGallery({ photos, weddingId, onPhotoClick }: PhotoGalleryPr
             />
             <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-opacity duration-200 flex items-center justify-center">
               <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                <Button variant="ghost" size="sm" className="text-white hover:text-white">
+                <Button variant="ghost" size="sm" className="text-white hover:text-white" aria-label="View photo details">
                   <X className="h-4 w-4" />
                 </Button>
               </div>
@@ -66,11 +76,23 @@ export function PhotoGallery({ photos, weddingId, onPhotoClick }: PhotoGalleryPr
 
       {/* Photo Modal */}
       {selectedPhoto && (
-        <div className="fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center p-4">
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={`Photo: ${selectedPhoto.original_filename}`}
+          className="fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center p-4"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setSelectedPhoto(null)
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') setSelectedPhoto(null)
+          }}
+        >
           <div className="relative max-w-4xl max-h-full">
             <button
               onClick={() => setSelectedPhoto(null)}
-              className="absolute -top-12 right-0 text-white hover:text-gray-300 z-10"
+              aria-label="Close photo viewer"
+              className="absolute -top-12 right-0 text-white hover:text-gray-300 z-10 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black rounded"
             >
               <X className="h-8 w-8" />
             </button>
