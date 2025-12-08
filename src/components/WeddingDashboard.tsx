@@ -124,10 +124,15 @@ export function WeddingDashboard() {
     )
   }
 
+  // Guard clause - should not reach here without currentWedding
+  if (!currentWedding) {
+    return null
+  }
+
   return (
     <div className="max-w-6xl mx-auto p-6">
       {/* Real-time notifications */}
-      {currentWedding && <RealtimeNotifications weddingId={currentWedding.id} />}
+      <RealtimeNotifications weddingId={currentWedding.id} />
       <Toaster position="top-right" />
       {/* Header */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">

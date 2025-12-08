@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
-import { supabase } from '@/lib/supabase'
+import { supabase, InvitationToken } from '@/lib/supabase'
 import { RSVPForm } from '@/components/RSVPForm'
 import { Card } from '@/components/ui/Card'
-import { Button } from '@/components/ui/Button'
 import { Calendar, MapPin, Heart, CheckCircle, XCircle } from 'lucide-react'
 import { toast } from 'sonner'
+import { isTokenExpired } from '@/lib/tokens'
 
 interface WeddingEvent {
   id: string
@@ -25,39 +25,82 @@ interface Wedding {
   venue_address: string
 }
 
+interface RSVPSubmitData {
+  name: string
+  email: string
+  phone?: string
+  status: 'confirmed' | 'declined'
+  dietary_restrictions?: string
+  plus_one: boolean
+  plus_one_name?: string
+}
+
 export function PublicRSVP() {
   const { weddingId } = useParams<{ weddingId: string }>()
   const [searchParams] = useSearchParams()
   const guestEmail = searchParams.get('email')
-  const guestName = searchParams.get('name')
   const token = searchParams.get('token')
-  
+
   const [wedding, setWedding] = useState<Wedding | null>(null)
   const [events, setEvents] = useState<WeddingEvent[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [rsvpSubmitted, setRsvpSubmitted] = useState(false)
-  const [submittedData, setSubmittedData] = useState<any>(null)
+  const [submittedData, setSubmittedData] = useState<RSVPSubmitData | null>(null)
+  const [verifiedToken, setVerifiedToken] = useState<InvitationToken | null>(null)
 
   useEffect(() => {
     if (!weddingId || !guestEmail || !token) {
-      setError('Invalid invitation link')
+      setError('Invalid invitation link. Please check the link and try again.')
       setLoading(false)
       return
     }
 
-    // Verify the invitation token
-    verifyInvitation()
-    fetchWeddingData()
+    // Verify the invitation token first, then fetch wedding data
+    verifyAndFetchData()
   }, [weddingId, guestEmail, token])
 
-  const verifyInvitation = async () => {
+  const verifyAndFetchData = async () => {
     try {
-      // In a real implementation, you'd verify the token against your database
-      // For now, we'll proceed with the assumption that the token is valid
-      console.log('Verifying invitation token:', token)
-    } catch (error) {
-      setError('Invalid or expired invitation link')
+      setLoading(true)
+
+      // Verify the token against the database
+      const { data: tokenData, error: tokenError } = await supabase
+        .from('invitation_tokens')
+        .select('*')
+        .eq('wedding_id', weddingId)
+        .eq('email', guestEmail)
+        .eq('token', token)
+        .single()
+
+      if (tokenError || !tokenData) {
+        setError('Invalid invitation link. This link may have been used or is incorrect.')
+        setLoading(false)
+        return
+      }
+
+      // Check if token is expired
+      if (isTokenExpired(tokenData.expires_at)) {
+        setError('This invitation link has expired. Please contact the couple for a new link.')
+        setLoading(false)
+        return
+      }
+
+      // Check if token was already used
+      if (tokenData.used) {
+        setError('This invitation link has already been used. If you need to update your RSVP, please contact the couple.')
+        setLoading(false)
+        return
+      }
+
+      setVerifiedToken(tokenData)
+
+      // Token is valid, now fetch wedding data
+      await fetchWeddingData()
+    } catch (err) {
+      console.error('Error verifying invitation:', err)
+      setError('Unable to verify your invitation. Please try again later.')
+      setLoading(false)
     }
   }
 
@@ -93,8 +136,8 @@ export function PublicRSVP() {
     }
   }
 
-  const handleRSVPSubmit = async (rsvpData: any) => {
-    if (!weddingId || !guestEmail) return
+  const handleRSVPSubmit = async (rsvpData: RSVPSubmitData) => {
+    if (!weddingId || !guestEmail || !verifiedToken) return
 
     try {
       // Check if guest already exists
@@ -107,7 +150,7 @@ export function PublicRSVP() {
 
       let guestId = existingGuest?.id
 
-      // Create guest if doesn't exist
+      // Create guest if doesn't exist, or update existing guest
       if (!guestId) {
         const { data: newGuest, error: guestError } = await supabase
           .from('guests')
@@ -124,26 +167,43 @@ export function PublicRSVP() {
 
         if (guestError) throw guestError
         guestId = newGuest.id
+      } else {
+        // Update existing guest info
+        await supabase
+          .from('guests')
+          .update({
+            name: rsvpData.name,
+            phone: rsvpData.phone,
+            dietary_restrictions: rsvpData.dietary_restrictions,
+            plus_one: rsvpData.plus_one
+          })
+          .eq('id', guestId)
       }
 
       // Create RSVPs for all events
-      const rsvpPromises = events.map(event => 
-        supabase.from('rsvps').insert([{
+      const rsvpPromises = events.map(event =>
+        supabase.from('rsvps').upsert([{
           wedding_id: weddingId,
           guest_id: guestId,
           event_id: event.id,
           status: rsvpData.status,
           dietary_restrictions: rsvpData.dietary_restrictions,
           plus_one_name: rsvpData.plus_one_name
-        }])
+        }], { onConflict: 'guest_id,event_id' })
       )
 
       await Promise.all(rsvpPromises)
 
+      // Mark the invitation token as used
+      await supabase
+        .from('invitation_tokens')
+        .update({ used: true })
+        .eq('id', verifiedToken.id)
+
       // Show success message
       setSubmittedData(rsvpData)
       setRsvpSubmitted(true)
-      
+
       toast.success('RSVP submitted successfully!')
 
     } catch (error) {
@@ -289,11 +349,7 @@ export function PublicRSVP() {
         {/* RSVP Form */}
         <Card className="p-6">
           <h2 className="text-2xl font-bold text-gray-900 mb-6">RSVP</h2>
-          <RSVPForm 
-            weddingId={weddingId!}
-            eventId={events[0]?.id || ''}
-            onSubmit={handleRSVPSubmit}
-          />
+          <RSVPForm onSubmit={handleRSVPSubmit} />
         </Card>
       </div>
     </div>

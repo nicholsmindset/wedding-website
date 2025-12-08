@@ -20,7 +20,8 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,ico,png,svg,webp}'],
         runtimeCaching: [
           {
-            urlPattern: /^https:\/\/lmbuaaenceaolrspljio\.supabase\.co\/storage\/v1\/object\/public\/wedding-photos\//,
+            // Cache wedding photos from any Supabase storage
+            urlPattern: /^https:\/\/[a-z0-9]+\.supabase\.co\/storage\/v1\/object\/public\/wedding-photos\//,
             handler: 'CacheFirst',
             options: {
               cacheName: 'wedding-photos',
@@ -31,7 +32,8 @@ export default defineConfig({
             }
           },
           {
-            urlPattern: /^https:\/\/lmbuaaenceaolrspljio\.supabase\.co\/rest\/v1\//,
+            // Cache Supabase API responses
+            urlPattern: /^https:\/\/[a-z0-9]+\.supabase\.co\/rest\/v1\//,
             handler: 'NetworkFirst',
             options: {
               cacheName: 'supabase-api',

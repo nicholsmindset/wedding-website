@@ -2,6 +2,7 @@ import { useState, useRef } from 'react'
 import { useWeddingStore } from '@/stores/weddingStore'
 import { Button } from '@/components/ui/Button'
 import { Upload, X } from 'lucide-react'
+import { toast } from 'sonner'
 
 interface PhotoUploadProps {
   weddingId: string
@@ -44,12 +45,12 @@ export function PhotoUpload({ weddingId, onUploadComplete }: PhotoUploadProps) {
 
   const handleFile = (file: File) => {
     if (!file.type.startsWith('image/')) {
-      alert('Please select an image file')
+      toast.error('Please select an image file')
       return
     }
 
     if (file.size > 10 * 1024 * 1024) { // 10MB limit
-      alert('File size must be less than 10MB')
+      toast.error('File size must be less than 10MB')
       return
     }
 
@@ -68,9 +69,10 @@ export function PhotoUpload({ weddingId, onUploadComplete }: PhotoUploadProps) {
       await uploadPhoto(selectedFile, weddingId)
       setSelectedFile(null)
       setPreview(null)
+      toast.success('Photo uploaded successfully!')
       onUploadComplete?.()
     } catch {
-      alert('Upload failed. Please try again.')
+      toast.error('Upload failed. Please try again.')
     }
   }
 

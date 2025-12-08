@@ -3,8 +3,13 @@ import { toast } from 'sonner'
 import { Download, RefreshCw, Smartphone, Wifi, WifiOff } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 
+interface BeforeInstallPromptEvent extends Event {
+  prompt(): Promise<void>
+  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>
+}
+
 export function PWAInstaller() {
-  const [deferredPrompt, setDeferredPrompt] = useState<any>(null)
+  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null)
   const [showInstallButton, setShowInstallButton] = useState(false)
   const [isOnline, setIsOnline] = useState(navigator.onLine)
   const [updateAvailable, setUpdateAvailable] = useState(false)
@@ -26,7 +31,7 @@ export function PWAInstaller() {
   useEffect(() => {
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault()
-      setDeferredPrompt(e)
+      setDeferredPrompt(e as BeforeInstallPromptEvent)
       setShowInstallButton(true)
     }
 

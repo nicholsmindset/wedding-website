@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { toast } from 'sonner'
-import { Bell, Camera, User, Mail } from 'lucide-react'
+import { Camera, User, Mail } from 'lucide-react'
 
 interface RealtimeNotification {
   id: string

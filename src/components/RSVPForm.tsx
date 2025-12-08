@@ -5,8 +5,6 @@ import { Textarea } from '@/components/ui/Textarea'
 import { CheckCircle, XCircle, Mail, User, Phone } from 'lucide-react'
 
 interface RSVPFormProps {
-  weddingId: string
-  eventId: string
   onSubmit?: (data: RSVPData) => void
 }
 
@@ -20,7 +18,7 @@ interface RSVPData {
   plus_one_name?: string
 }
 
-export function RSVPForm({ weddingId, eventId, onSubmit }: RSVPFormProps) {
+export function RSVPForm({ onSubmit }: RSVPFormProps) {
   const [formData, setFormData] = useState<RSVPData>({
     name: '',
     email: '',
