@@ -4,6 +4,9 @@ import { LandingPage } from "@/components/LandingPage";
 import { WeddingDashboard } from "@/components/WeddingDashboard";
 import { PublicRSVP } from "@/components/PublicRSVP";
 import { PWAInstaller } from "@/components/PWAInstaller";
+import { AuthCallback } from "@/components/AuthCallback";
+import { NotFound } from "@/components/NotFound";
+import { SessionTimeoutWarning } from "@/components/SessionTimeoutWarning";
 import { useAuth } from "@/contexts/AuthContext";
 
 function AppContent() {
@@ -19,6 +22,7 @@ function AppContent() {
 
   return user ? (
     <>
+      <SessionTimeoutWarning />
       <WeddingDashboard />
       <PWAInstaller />
     </>
@@ -32,7 +36,8 @@ export default function App() {
         <Routes>
           <Route path="/" element={<AppContent />} />
           <Route path="/rsvp/:weddingId" element={<PublicRSVP />} />
-          <Route path="/auth/callback" element={<div>Authentication successful! Redirecting...</div>} />
+          <Route path="/auth/callback" element={<AuthCallback />} />
+          <Route path="*" element={<NotFound />} />
         </Routes>
       </Router>
     </AuthProvider>

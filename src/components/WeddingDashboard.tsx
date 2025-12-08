@@ -7,6 +7,8 @@ import { PhotoUpload } from '@/components/PhotoUpload'
 import { PhotoGallery } from '@/components/PhotoGallery'
 import { RSVPManager } from '@/components/RSVPManager'
 import { RealtimeNotifications } from '@/components/RealtimeNotifications'
+import { UserHeader } from '@/components/UserHeader'
+import { AccountSettings } from '@/components/AccountSettings'
 import { Button } from '@/components/ui/Button'
 import { Calendar, MapPin, Users, DollarSign, Plus, Upload, X } from 'lucide-react'
 import { format } from 'date-fns'
@@ -29,6 +31,7 @@ export function WeddingDashboard() {
 
   const [showCreateForm, setShowCreateForm] = useState(false)
   const [showPhotoUpload, setShowPhotoUpload] = useState(false)
+  const [showAccountSettings, setShowAccountSettings] = useState(false)
 
   useEffect(() => {
     if (user) {
@@ -51,19 +54,33 @@ export function WeddingDashboard() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-      </div>
+      <>
+        <UserHeader onSettingsClick={() => setShowAccountSettings(true)} />
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        </div>
+      </>
+    )
+  }
+
+  if (showAccountSettings) {
+    return (
+      <>
+        <UserHeader onSettingsClick={() => setShowAccountSettings(true)} />
+        <AccountSettings onClose={() => setShowAccountSettings(false)} />
+      </>
     )
   }
 
   if (!currentWedding && !showCreateForm) {
     return (
-      <div className="max-w-4xl mx-auto p-6">
-        <div className="text-center py-12">
-          <h1 className="text-3xl font-bold text-gray-900 mb-4">
-            Welcome to Your Wedding Planner
-          </h1>
+      <>
+        <UserHeader onSettingsClick={() => setShowAccountSettings(true)} />
+        <div className="max-w-4xl mx-auto p-6">
+          <div className="text-center py-12">
+            <h1 className="text-3xl font-bold text-gray-900 mb-4">
+              Welcome to Your Wedding Planner
+            </h1>
           <p className="text-gray-600 mb-8">
             {weddings.length > 0 
               ? "Select a wedding to manage or create a new one"
@@ -103,24 +120,28 @@ export function WeddingDashboard() {
             <Plus className="h-5 w-5 mr-2" />
             Create New Wedding
           </Button>
+          </div>
         </div>
-      </div>
+      </>
     )
   }
 
   if (showCreateForm) {
     return (
-      <div className="max-w-2xl mx-auto p-6">
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">
-            Create Your Wedding
-          </h2>
-          <WeddingForm
-            onSuccess={() => setShowCreateForm(false)}
-            onCancel={() => setShowCreateForm(false)}
-          />
+      <>
+        <UserHeader onSettingsClick={() => setShowAccountSettings(true)} />
+        <div className="max-w-2xl mx-auto p-6">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">
+              Create Your Wedding
+            </h2>
+            <WeddingForm
+              onSuccess={() => setShowCreateForm(false)}
+              onCancel={() => setShowCreateForm(false)}
+            />
+          </div>
         </div>
-      </div>
+      </>
     )
   }
 
@@ -130,12 +151,14 @@ export function WeddingDashboard() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto p-6">
-      {/* Real-time notifications */}
-      <RealtimeNotifications weddingId={currentWedding.id} />
-      <Toaster position="top-right" />
-      {/* Header */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+    <>
+      <UserHeader onSettingsClick={() => setShowAccountSettings(true)} />
+      <div className="max-w-6xl mx-auto p-6">
+        {/* Real-time notifications */}
+        <RealtimeNotifications weddingId={currentWedding.id} />
+        <Toaster position="top-right" />
+        {/* Wedding Header */}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
         <div className="flex items-center justify-between mb-4">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">
@@ -297,6 +320,7 @@ export function WeddingDashboard() {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </>
   )
 }
