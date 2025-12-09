@@ -2,6 +2,26 @@ import { create } from 'zustand'
 import { supabase } from '@/lib/supabase'
 import { Wedding, Event, Guest, RSVP, Photo } from '@/lib/supabase'
 
+// Granular loading states for better UX
+interface LoadingStates {
+  weddings: boolean
+  weddingDetails: boolean
+  createWedding: boolean
+  createEvent: boolean
+  createGuest: boolean
+  uploadPhoto: boolean
+}
+
+// Granular error states to identify which operation failed
+interface ErrorStates {
+  weddings: string | null
+  weddingDetails: string | null
+  createWedding: string | null
+  createEvent: string | null
+  createGuest: string | null
+  uploadPhoto: string | null
+}
+
 interface WeddingStore {
   weddings: Wedding[]
   currentWedding: Wedding | null
@@ -9,9 +29,15 @@ interface WeddingStore {
   guests: Guest[]
   rsvps: RSVP[]
   photos: Photo[]
+
+  // Granular loading and error states
+  loadingStates: LoadingStates
+  errors: ErrorStates
+
+  // Legacy single loading/error for backward compatibility
   loading: boolean
   error: string | null
-  
+
   // Actions
   fetchWeddings: () => Promise<void>
   setCurrentWedding: (wedding: Wedding | null) => void
@@ -21,6 +47,25 @@ interface WeddingStore {
   createGuest: (guest: Omit<Guest, 'id' | 'created_at' | 'updated_at'>) => Promise<void>
   uploadPhoto: (file: File, weddingId: string) => Promise<void>
   subscribeToWedding: (weddingId: string) => () => void
+  clearError: (key: keyof ErrorStates) => void
+}
+
+const initialLoadingStates: LoadingStates = {
+  weddings: false,
+  weddingDetails: false,
+  createWedding: false,
+  createEvent: false,
+  createGuest: false,
+  uploadPhoto: false,
+}
+
+const initialErrorStates: ErrorStates = {
+  weddings: null,
+  weddingDetails: null,
+  createWedding: null,
+  createEvent: null,
+  createGuest: null,
+  uploadPhoto: null,
 }
 
 export const useWeddingStore = create<WeddingStore>((set) => ({
@@ -30,21 +75,45 @@ export const useWeddingStore = create<WeddingStore>((set) => ({
   guests: [],
   rsvps: [],
   photos: [],
+  loadingStates: initialLoadingStates,
+  errors: initialErrorStates,
   loading: false,
   error: null,
 
+  clearError: (key: keyof ErrorStates) => {
+    set(state => ({
+      errors: { ...state.errors, [key]: null },
+      error: null, // Also clear legacy error
+    }))
+  },
+
   fetchWeddings: async () => {
-    set({ loading: true, error: null })
+    set(state => ({
+      loadingStates: { ...state.loadingStates, weddings: true },
+      errors: { ...state.errors, weddings: null },
+      loading: true,
+      error: null,
+    }))
     try {
       const { data, error } = await supabase
         .from('weddings')
         .select('*')
         .order('date', { ascending: true })
-      
+
       if (error) throw error
-      set({ weddings: data || [], loading: false })
+      set(state => ({
+        weddings: data || [],
+        loadingStates: { ...state.loadingStates, weddings: false },
+        loading: false,
+      }))
     } catch (error) {
-      set({ error: (error as Error).message, loading: false })
+      const errorMessage = (error as Error).message
+      set(state => ({
+        errors: { ...state.errors, weddings: errorMessage },
+        loadingStates: { ...state.loadingStates, weddings: false },
+        error: errorMessage,
+        loading: false,
+      }))
     }
   },
 
@@ -53,7 +122,12 @@ export const useWeddingStore = create<WeddingStore>((set) => ({
   },
 
   createWedding: async (weddingData) => {
-    set({ loading: true, error: null })
+    set(state => ({
+      loadingStates: { ...state.loadingStates, createWedding: true },
+      errors: { ...state.errors, createWedding: null },
+      loading: true,
+      error: null,
+    }))
     try {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error('User not authenticated')
@@ -66,9 +140,9 @@ export const useWeddingStore = create<WeddingStore>((set) => ({
         }])
         .select()
         .single()
-      
+
       if (error) throw error
-      
+
       // Add planner role for the creator
       await supabase
         .from('wedding_roles')
@@ -77,20 +151,32 @@ export const useWeddingStore = create<WeddingStore>((set) => ({
           user_id: user.id,
           role: 'planner'
         }])
-      
+
       set(state => ({
         weddings: [...state.weddings, data],
         currentWedding: data,
-        loading: false
+        loadingStates: { ...state.loadingStates, createWedding: false },
+        loading: false,
       }))
     } catch (error) {
-      set({ error: (error as Error).message, loading: false })
+      const errorMessage = (error as Error).message
+      set(state => ({
+        errors: { ...state.errors, createWedding: errorMessage },
+        loadingStates: { ...state.loadingStates, createWedding: false },
+        error: errorMessage,
+        loading: false,
+      }))
       throw error
     }
   },
 
   fetchWeddingDetails: async (weddingId) => {
-    set({ loading: true, error: null })
+    set(state => ({
+      loadingStates: { ...state.loadingStates, weddingDetails: true },
+      errors: { ...state.errors, weddingDetails: null },
+      loading: true,
+      error: null,
+    }))
     try {
       // Fetch wedding details
       const { data: wedding, error: weddingError } = await supabase
@@ -98,87 +184,123 @@ export const useWeddingStore = create<WeddingStore>((set) => ({
         .select('*')
         .eq('id', weddingId)
         .single()
-      
+
       if (weddingError) throw weddingError
-      
-      // Fetch related data
+
+      // Fetch related data in parallel
       const [events, guests, rsvps, photos] = await Promise.all([
         supabase.from('events').select('*').eq('wedding_id', weddingId),
         supabase.from('guests').select('*').eq('wedding_id', weddingId),
         supabase.from('rsvps').select('*').eq('wedding_id', weddingId),
         supabase.from('photos').select('*').eq('wedding_id', weddingId)
       ])
-      
-      set({
+
+      set(state => ({
         currentWedding: wedding,
         events: events.data || [],
         guests: guests.data || [],
         rsvps: rsvps.data || [],
         photos: photos.data || [],
-        loading: false
-      })
+        loadingStates: { ...state.loadingStates, weddingDetails: false },
+        loading: false,
+      }))
     } catch (error) {
-      set({ error: (error as Error).message, loading: false })
+      const errorMessage = (error as Error).message
+      set(state => ({
+        errors: { ...state.errors, weddingDetails: errorMessage },
+        loadingStates: { ...state.loadingStates, weddingDetails: false },
+        error: errorMessage,
+        loading: false,
+      }))
     }
   },
 
   createEvent: async (eventData) => {
-    set({ loading: true, error: null })
+    set(state => ({
+      loadingStates: { ...state.loadingStates, createEvent: true },
+      errors: { ...state.errors, createEvent: null },
+      loading: true,
+      error: null,
+    }))
     try {
       const { data, error } = await supabase
         .from('events')
         .insert([eventData])
         .select()
         .single()
-      
+
       if (error) throw error
-      
+
       set(state => ({
         events: [...state.events, data],
-        loading: false
+        loadingStates: { ...state.loadingStates, createEvent: false },
+        loading: false,
       }))
     } catch (error) {
-      set({ error: (error as Error).message, loading: false })
+      const errorMessage = (error as Error).message
+      set(state => ({
+        errors: { ...state.errors, createEvent: errorMessage },
+        loadingStates: { ...state.loadingStates, createEvent: false },
+        error: errorMessage,
+        loading: false,
+      }))
       throw error
     }
   },
 
   createGuest: async (guestData) => {
-    set({ loading: true, error: null })
+    set(state => ({
+      loadingStates: { ...state.loadingStates, createGuest: true },
+      errors: { ...state.errors, createGuest: null },
+      loading: true,
+      error: null,
+    }))
     try {
       const { data, error } = await supabase
         .from('guests')
         .insert([guestData])
         .select()
         .single()
-      
+
       if (error) throw error
-      
+
       set(state => ({
         guests: [...state.guests, data],
-        loading: false
+        loadingStates: { ...state.loadingStates, createGuest: false },
+        loading: false,
       }))
     } catch (error) {
-      set({ error: (error as Error).message, loading: false })
+      const errorMessage = (error as Error).message
+      set(state => ({
+        errors: { ...state.errors, createGuest: errorMessage },
+        loadingStates: { ...state.loadingStates, createGuest: false },
+        error: errorMessage,
+        loading: false,
+      }))
       throw error
     }
   },
 
   uploadPhoto: async (file: File, weddingId: string) => {
-    set({ loading: true, error: null })
+    set(state => ({
+      loadingStates: { ...state.loadingStates, uploadPhoto: true },
+      errors: { ...state.errors, uploadPhoto: null },
+      loading: true,
+      error: null,
+    }))
     try {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error('User not authenticated')
 
       const fileName = `${weddingId}/${Date.now()}-${file.name}`
-      
+
       // Upload to Supabase Storage
       const { error: uploadError } = await supabase.storage
         .from('wedding-photos')
         .upload(fileName, file)
-      
+
       if (uploadError) throw uploadError
-      
+
       // Create photo record
       const { data: photo, error: photoError } = await supabase
         .from('photos')
@@ -194,15 +316,22 @@ export const useWeddingStore = create<WeddingStore>((set) => ({
         }])
         .select()
         .single()
-      
+
       if (photoError) throw photoError
-      
+
       set(state => ({
         photos: [...state.photos, photo],
-        loading: false
+        loadingStates: { ...state.loadingStates, uploadPhoto: false },
+        loading: false,
       }))
     } catch (error) {
-      set({ error: (error as Error).message, loading: false })
+      const errorMessage = (error as Error).message
+      set(state => ({
+        errors: { ...state.errors, uploadPhoto: errorMessage },
+        loadingStates: { ...state.loadingStates, uploadPhoto: false },
+        error: errorMessage,
+        loading: false,
+      }))
       throw error
     }
   },

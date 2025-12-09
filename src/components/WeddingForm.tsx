@@ -1,9 +1,27 @@
-import { useState } from 'react'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { z } from 'zod'
 import { useWeddingStore } from '@/stores/weddingStore'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Textarea } from '@/components/ui/Textarea'
 import { Calendar } from 'lucide-react'
+
+// Zod schema for form validation (input type - what the form fields use)
+const weddingSchema = z.object({
+  title: z.string().min(1, 'Wedding title is required').max(100, 'Title must be less than 100 characters'),
+  description: z.string().max(500, 'Description must be less than 500 characters').optional(),
+  date: z.string().min(1, 'Wedding date is required'),
+  venue_name: z.string().max(100, 'Venue name must be less than 100 characters').optional(),
+  venue_address: z.string().max(200, 'Venue address must be less than 200 characters').optional(),
+  budget: z.string().optional()
+    .refine(
+      val => !val || (!isNaN(parseFloat(val)) && parseFloat(val) >= 0),
+      'Budget must be a positive number'
+    ),
+})
+
+type WeddingFormData = z.infer<typeof weddingSchema>
 
 interface WeddingFormProps {
   onSuccess?: () => void
@@ -11,44 +29,45 @@ interface WeddingFormProps {
 }
 
 export function WeddingForm({ onSuccess, onCancel }: WeddingFormProps) {
-  const { createWedding, loading } = useWeddingStore()
-  const [formData, setFormData] = useState({
-    title: '',
-    description: '',
-    date: '',
-    venue_name: '',
-    venue_address: '',
-    budget: ''
+  const { createWedding, loadingStates, errors: storeErrors } = useWeddingStore()
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<WeddingFormData>({
+    resolver: zodResolver(weddingSchema),
+    defaultValues: {
+      title: '',
+      description: '',
+      date: '',
+      venue_name: '',
+      venue_address: '',
+      budget: '',
+    },
   })
-  const [error, setError] = useState<string | null>(null)
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError(null)
-
+  const onSubmit = async (data: WeddingFormData) => {
     try {
       await createWedding({
-        title: formData.title,
-        description: formData.description || null,
-        date: formData.date,
-        venue_name: formData.venue_name || null,
-        venue_address: formData.venue_address || null,
-        budget: formData.budget ? parseFloat(formData.budget) : null,
+        title: data.title,
+        description: data.description || null,
+        date: data.date,
+        venue_name: data.venue_name || null,
+        venue_address: data.venue_address || null,
+        budget: data.budget ? parseFloat(data.budget) : null,
         created_by: '' // This will be set in the store
       })
       onSuccess?.()
-    } catch (err) {
-      setError((err as Error).message)
+    } catch {
+      // Error is handled by the store
     }
   }
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target
-    setFormData(prev => ({ ...prev, [name]: value }))
-  }
+  const isLoading = loadingStates.createWedding || isSubmitting
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
       <div className="space-y-4">
         <div>
           <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
@@ -56,13 +75,14 @@ export function WeddingForm({ onSuccess, onCancel }: WeddingFormProps) {
           </label>
           <Input
             id="title"
-            name="title"
             type="text"
-            required
-            value={formData.title}
-            onChange={handleChange}
             placeholder="Sarah & John's Wedding"
+            {...register('title')}
+            aria-invalid={errors.title ? 'true' : 'false'}
           />
+          {errors.title && (
+            <p className="mt-1 text-sm text-red-600">{errors.title.message}</p>
+          )}
         </div>
 
         <div>
@@ -71,12 +91,14 @@ export function WeddingForm({ onSuccess, onCancel }: WeddingFormProps) {
           </label>
           <Textarea
             id="description"
-            name="description"
-            value={formData.description}
-            onChange={handleChange}
             placeholder="A beautiful summer wedding celebration"
             rows={3}
+            {...register('description')}
+            aria-invalid={errors.description ? 'true' : 'false'}
           />
+          {errors.description && (
+            <p className="mt-1 text-sm text-red-600">{errors.description.message}</p>
+          )}
         </div>
 
         <div>
@@ -86,15 +108,16 @@ export function WeddingForm({ onSuccess, onCancel }: WeddingFormProps) {
           <div className="relative">
             <Input
               id="date"
-              name="date"
               type="date"
-              required
-              value={formData.date}
-              onChange={handleChange}
               className="pl-10"
+              {...register('date')}
+              aria-invalid={errors.date ? 'true' : 'false'}
             />
             <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
           </div>
+          {errors.date && (
+            <p className="mt-1 text-sm text-red-600">{errors.date.message}</p>
+          )}
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -104,12 +127,14 @@ export function WeddingForm({ onSuccess, onCancel }: WeddingFormProps) {
             </label>
             <Input
               id="venue_name"
-              name="venue_name"
               type="text"
-              value={formData.venue_name}
-              onChange={handleChange}
               placeholder="Garden Paradise Venue"
+              {...register('venue_name')}
+              aria-invalid={errors.venue_name ? 'true' : 'false'}
             />
+            {errors.venue_name && (
+              <p className="mt-1 text-sm text-red-600">{errors.venue_name.message}</p>
+            )}
           </div>
 
           <div>
@@ -118,14 +143,16 @@ export function WeddingForm({ onSuccess, onCancel }: WeddingFormProps) {
             </label>
             <Input
               id="budget"
-              name="budget"
               type="number"
-              value={formData.budget}
-              onChange={handleChange}
               placeholder="25000"
               min="0"
               step="0.01"
+              {...register('budget')}
+              aria-invalid={errors.budget ? 'true' : 'false'}
             />
+            {errors.budget && (
+              <p className="mt-1 text-sm text-red-600">{errors.budget.message}</p>
+            )}
           </div>
         </div>
 
@@ -135,28 +162,30 @@ export function WeddingForm({ onSuccess, onCancel }: WeddingFormProps) {
           </label>
           <Input
             id="venue_address"
-            name="venue_address"
             type="text"
-            value={formData.venue_address}
-            onChange={handleChange}
             placeholder="123 Wedding Lane, Celebration City"
+            {...register('venue_address')}
+            aria-invalid={errors.venue_address ? 'true' : 'false'}
           />
+          {errors.venue_address && (
+            <p className="mt-1 text-sm text-red-600">{errors.venue_address.message}</p>
+          )}
         </div>
       </div>
 
-      {error && (
+      {storeErrors.createWedding && (
         <div className="text-red-600 text-sm bg-red-50 p-3 rounded-md">
-          {error}
+          {storeErrors.createWedding}
         </div>
       )}
 
       <div className="flex gap-3">
         <Button
           type="submit"
-          disabled={loading}
+          disabled={isLoading}
           className="flex-1"
         >
-          {loading ? 'Creating...' : 'Create Wedding'}
+          {isLoading ? 'Creating...' : 'Create Wedding'}
         </Button>
         {onCancel && (
           <Button

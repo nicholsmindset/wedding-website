@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState, useMemo } from 'react'
 import { supabase } from '@/lib/supabase'
+import { useWeddingStore } from '@/stores/weddingStore'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
@@ -8,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/Dialog'
 import { Mail, Plus, Users, Send, CheckCircle, XCircle, Clock, Copy, Download, Eye } from 'lucide-react'
 import { toast } from 'sonner'
-import { Wedding, Guest, RSVP, Event } from '@/lib/supabase'
+import { Wedding, Event } from '@/lib/supabase'
 import { generateRSVPInvitationEmail } from '@/utils/emailTemplates'
 import { generateSecureToken, generateMagicLinkUrl, getTokenExpirationDate } from '@/lib/tokens'
 
@@ -33,50 +34,22 @@ interface EmailPreviewData {
 }
 
 export function RSVPManager({ wedding, events, onUpdate }: RSVPManagerProps) {
-  const [guests, setGuests] = useState<Guest[]>([])
-  const [rsvps, setRsvps] = useState<RSVP[]>([])
-  const [, setLoading] = useState(true)
+  // Use Zustand store for guests and RSVPs (eliminates state duplication)
+  const { guests: storeGuests, rsvps } = useWeddingStore()
+
+  // Sort guests by name (memoized to prevent unnecessary re-computation)
+  const guests = useMemo(
+    () => [...storeGuests].sort((a, b) => a.name.localeCompare(b.name)),
+    [storeGuests]
+  )
+
+  // Local UI state only
   const [invitationDialogOpen, setInvitationDialogOpen] = useState(false)
   const [invitations, setInvitations] = useState<InvitationData[]>([{ email: '', name: '' }])
   const [sendingInvitations, setSendingInvitations] = useState(false)
   const [selectedEvent, setSelectedEvent] = useState<string>('')
   const [previewDialogOpen, setPreviewDialogOpen] = useState(false)
   const [previewData, setPreviewData] = useState<EmailPreviewData | null>(null)
-
-  useEffect(() => {
-    fetchGuestsAndRSVPs()
-  }, [wedding.id])
-
-  const fetchGuestsAndRSVPs = async () => {
-    try {
-      setLoading(true)
-      
-      // Fetch guests
-      const { data: guestsData, error: guestsError } = await supabase
-        .from('guests')
-        .select('*')
-        .eq('wedding_id', wedding.id)
-        .order('name', { ascending: true })
-
-      if (guestsError) throw guestsError
-      setGuests(guestsData || [])
-
-      // Fetch RSVPs
-      const { data: rsvpsData, error: rsvpsError } = await supabase
-        .from('rsvps')
-        .select('*')
-        .eq('wedding_id', wedding.id)
-
-      if (rsvpsError) throw rsvpsError
-      setRsvps(rsvpsData || [])
-
-    } catch (error) {
-      console.error('Error fetching guests and RSVPs:', error)
-      toast.error('Failed to load guest information')
-    } finally {
-      setLoading(false)
-    }
-  }
 
   const addInvitationField = () => {
     setInvitations([...invitations, { email: '', name: '' }])
@@ -185,7 +158,7 @@ export function RSVPManager({ wedding, events, onUpdate }: RSVPManagerProps) {
       toast.success(`${validInvitations.length} invitations sent successfully!`)
       setInvitationDialogOpen(false)
       setInvitations([{ email: '', name: '' }])
-      fetchGuestsAndRSVPs()
+      // Trigger store refresh via parent callback (real-time subscriptions will also update the store)
       onUpdate?.()
 
     } catch (error) {

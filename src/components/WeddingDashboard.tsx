@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useParams, useNavigate } from 'react-router-dom'
 import { Toaster } from 'sonner'
 import { useAuth } from '@/contexts/AuthContext'
 import { useWeddingStore } from '@/stores/weddingStore'
@@ -13,43 +14,87 @@ import { format } from 'date-fns'
 
 export function WeddingDashboard() {
   const { user } = useAuth()
-  const { 
-    weddings, 
-    currentWedding, 
-    events, 
-    guests, 
+  const { weddingId } = useParams<{ weddingId: string }>()
+  const navigate = useNavigate()
+
+  const {
+    weddings,
+    currentWedding,
+    events,
+    guests,
     photos,
     rsvps,
-    loading, 
-    fetchWeddings, 
-    setCurrentWedding, 
+    loadingStates,
+    fetchWeddings,
+    setCurrentWedding,
     fetchWeddingDetails,
-    subscribeToWedding 
+    subscribeToWedding
   } = useWeddingStore()
 
   const [showCreateForm, setShowCreateForm] = useState(false)
   const [showPhotoUpload, setShowPhotoUpload] = useState(false)
 
+  // Derive loading state from granular states
+  const isLoading = loadingStates.weddings || loadingStates.weddingDetails
+
+  // Fetch all weddings on mount
   useEffect(() => {
     if (user) {
       fetchWeddings()
     }
   }, [user, fetchWeddings])
 
+  // Sync URL param with current wedding selection
+  useEffect(() => {
+    if (weddingId && weddings.length > 0) {
+      const weddingFromUrl = weddings.find(w => w.id === weddingId)
+      if (weddingFromUrl && currentWedding?.id !== weddingId) {
+        setCurrentWedding(weddingFromUrl)
+      } else if (!weddingFromUrl) {
+        // Invalid wedding ID in URL, redirect to home
+        navigate('/', { replace: true })
+      }
+    } else if (!weddingId && currentWedding) {
+      // No wedding ID in URL but we have a current wedding - clear it
+      setCurrentWedding(null)
+    }
+  }, [weddingId, weddings, currentWedding, setCurrentWedding, navigate])
+
+  // Fetch wedding details and subscribe when current wedding changes
   useEffect(() => {
     if (currentWedding) {
       fetchWeddingDetails(currentWedding.id)
-      
+
       // Subscribe to real-time updates
       const unsubscribe = subscribeToWedding(currentWedding.id)
-      
+
       return () => {
         unsubscribe()
       }
     }
   }, [currentWedding, fetchWeddingDetails, subscribeToWedding])
 
-  if (loading) {
+  // Navigate to wedding (updates URL which triggers state sync)
+  const handleSelectWedding = (weddingId: string) => {
+    navigate(`/wedding/${weddingId}`)
+  }
+
+  // Navigate back to wedding list
+  const handleBackToWeddings = () => {
+    setCurrentWedding(null)
+    navigate('/')
+  }
+
+  // Handle successful wedding creation - navigate to the new wedding
+  const handleWeddingCreated = () => {
+    setShowCreateForm(false)
+    // The store will have updated currentWedding, navigate to it
+    if (currentWedding) {
+      navigate(`/wedding/${currentWedding.id}`)
+    }
+  }
+
+  if (isLoading && weddings.length === 0) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -65,19 +110,19 @@ export function WeddingDashboard() {
             Welcome to Your Wedding Planner
           </h1>
           <p className="text-gray-600 mb-8">
-            {weddings.length > 0 
+            {weddings.length > 0
               ? "Select a wedding to manage or create a new one"
               : "Get started by creating your first wedding event"
             }
           </p>
-          
+
           {weddings.length > 0 && (
             <div className="grid gap-4 mb-8">
               {weddings.map((wedding) => (
                 <div
                   key={wedding.id}
                   className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 cursor-pointer hover:shadow-md transition-shadow"
-                  onClick={() => setCurrentWedding(wedding)}
+                  onClick={() => handleSelectWedding(wedding.id)}
                 >
                   <h3 className="text-xl font-semibold text-gray-900 mb-2">
                     {wedding.title}
@@ -98,7 +143,7 @@ export function WeddingDashboard() {
               ))}
             </div>
           )}
-          
+
           <Button onClick={() => setShowCreateForm(true)} size="lg">
             <Plus className="h-5 w-5 mr-2" />
             Create New Wedding
@@ -116,7 +161,7 @@ export function WeddingDashboard() {
             Create Your Wedding
           </h2>
           <WeddingForm
-            onSuccess={() => setShowCreateForm(false)}
+            onSuccess={handleWeddingCreated}
             onCancel={() => setShowCreateForm(false)}
           />
         </div>
@@ -147,7 +192,7 @@ export function WeddingDashboard() {
           </div>
           <Button
             variant="outline"
-            onClick={() => setCurrentWedding(null)}
+            onClick={handleBackToWeddings}
           >
             Back to Weddings
           </Button>

@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { LandingPage } from "@/components/LandingPage";
 import { WeddingDashboard } from "@/components/WeddingDashboard";
@@ -6,23 +6,54 @@ import { PublicRSVP } from "@/components/PublicRSVP";
 import { PWAInstaller } from "@/components/PWAInstaller";
 import { useAuth } from "@/contexts/AuthContext";
 
-function AppContent() {
+// Loading spinner component
+function LoadingSpinner() {
+  return (
+    <div className="flex items-center justify-center min-h-screen">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+    </div>
+  );
+}
+
+// Protected route wrapper - redirects to landing if not authenticated
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
 
   if (loading) {
+    return <LoadingSpinner />;
+  }
+
+  if (!user) {
+    return <Navigate to="/" replace />;
+  }
+
+  return (
+    <>
+      {children}
+      <PWAInstaller />
+    </>
+  );
+}
+
+// Home route - shows landing or redirects to dashboard
+function HomeRoute() {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return <LoadingSpinner />;
+  }
+
+  // If authenticated, show the wedding list (no specific wedding selected)
+  if (user) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-      </div>
+      <>
+        <WeddingDashboard />
+        <PWAInstaller />
+      </>
     );
   }
 
-  return user ? (
-    <>
-      <WeddingDashboard />
-      <PWAInstaller />
-    </>
-  ) : <LandingPage />;
+  return <LandingPage />;
 }
 
 export default function App() {
@@ -30,8 +61,23 @@ export default function App() {
     <AuthProvider>
       <Router>
         <Routes>
-          <Route path="/" element={<AppContent />} />
+          {/* Home - wedding list or landing page */}
+          <Route path="/" element={<HomeRoute />} />
+
+          {/* Deep link to specific wedding (URL-based state) */}
+          <Route
+            path="/wedding/:weddingId"
+            element={
+              <ProtectedRoute>
+                <WeddingDashboard />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Public RSVP page */}
           <Route path="/rsvp/:weddingId" element={<PublicRSVP />} />
+
+          {/* Auth callback */}
           <Route path="/auth/callback" element={<div>Authentication successful! Redirecting...</div>} />
         </Routes>
       </Router>

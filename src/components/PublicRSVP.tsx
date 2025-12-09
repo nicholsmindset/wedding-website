@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
 import { supabase, InvitationToken } from '@/lib/supabase'
-import { RSVPForm } from '@/components/RSVPForm'
+import { RSVPForm, RSVPData } from '@/components/RSVPForm'
 import { Card } from '@/components/ui/Card'
 import { Calendar, MapPin, Heart, CheckCircle, XCircle } from 'lucide-react'
 import { toast } from 'sonner'
@@ -25,16 +25,6 @@ interface Wedding {
   venue_address: string
 }
 
-interface RSVPSubmitData {
-  name: string
-  email: string
-  phone?: string
-  status: 'confirmed' | 'declined'
-  dietary_restrictions?: string
-  plus_one: boolean
-  plus_one_name?: string
-}
-
 export function PublicRSVP() {
   const { weddingId } = useParams<{ weddingId: string }>()
   const [searchParams] = useSearchParams()
@@ -46,7 +36,7 @@ export function PublicRSVP() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [rsvpSubmitted, setRsvpSubmitted] = useState(false)
-  const [submittedData, setSubmittedData] = useState<RSVPSubmitData | null>(null)
+  const [submittedData, setSubmittedData] = useState<RSVPData | null>(null)
   const [verifiedToken, setVerifiedToken] = useState<InvitationToken | null>(null)
 
   useEffect(() => {
@@ -136,7 +126,7 @@ export function PublicRSVP() {
     }
   }
 
-  const handleRSVPSubmit = async (rsvpData: RSVPSubmitData) => {
+  const handleRSVPSubmit = async (rsvpData: RSVPData) => {
     if (!weddingId || !guestEmail || !verifiedToken) return
 
     try {
