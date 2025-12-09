@@ -4,6 +4,8 @@ import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Textarea } from '@/components/ui/Textarea'
+import { Spinner } from '@/components/ui/Spinner'
+import { StatCardCompact } from '@/components/ui/StatCard'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/Table'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/Dialog'
 import { Mail, Plus, Users, Send, CheckCircle, XCircle, Clock, Copy, Download, Eye } from 'lucide-react'
@@ -425,7 +427,7 @@ export function RSVPManager({ wedding, events, onUpdate }: RSVPManagerProps) {
                   >
                     {sendingInvitations ? (
                       <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                        <Spinner size="sm" className="mr-2 border-white" />
                         Sending...
                       </>
                     ) : (
@@ -444,22 +446,10 @@ export function RSVPManager({ wedding, events, onUpdate }: RSVPManagerProps) {
 
       {/* Stats */}
       <div className="grid grid-cols-4 gap-4 mb-6">
-        <div className="bg-blue-50 rounded-lg p-4 text-center">
-          <div className="text-2xl font-bold text-blue-600">{stats.total}</div>
-          <div className="text-sm text-blue-600">Total Guests</div>
-        </div>
-        <div className="bg-green-50 rounded-lg p-4 text-center">
-          <div className="text-2xl font-bold text-green-600">{stats.confirmed}</div>
-          <div className="text-sm text-green-600">Confirmed</div>
-        </div>
-        <div className="bg-red-50 rounded-lg p-4 text-center">
-          <div className="text-2xl font-bold text-red-600">{stats.declined}</div>
-          <div className="text-sm text-red-600">Declined</div>
-        </div>
-        <div className="bg-yellow-50 rounded-lg p-4 text-center">
-          <div className="text-2xl font-bold text-yellow-600">{stats.pending}</div>
-          <div className="text-sm text-yellow-600">Pending</div>
-        </div>
+        <StatCardCompact label="Total Guests" value={stats.total} color="blue" />
+        <StatCardCompact label="Confirmed" value={stats.confirmed} color="green" />
+        <StatCardCompact label="Declined" value={stats.declined} color="red" />
+        <StatCardCompact label="Pending" value={stats.pending} color="yellow" />
       </div>
 
       {/* Guest List */}

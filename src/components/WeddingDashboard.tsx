@@ -8,7 +8,8 @@ import { PhotoGallery } from '@/components/PhotoGallery'
 import { RSVPManager } from '@/components/RSVPManager'
 import { RealtimeNotifications } from '@/components/RealtimeNotifications'
 import { Button } from '@/components/ui/Button'
-import { Calendar, MapPin, Users, DollarSign, Plus, Upload, X } from 'lucide-react'
+import { Spinner } from '@/components/ui/Spinner'
+import { Calendar, MapPin, Users, DollarSign, Plus, Upload, X, Camera, Bot } from 'lucide-react'
 import { format } from 'date-fns'
 
 export function WeddingDashboard() {
@@ -52,7 +53,7 @@ export function WeddingDashboard() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <Spinner size="md" label="Loading wedding data" />
       </div>
     )
   }
@@ -216,7 +217,7 @@ export function WeddingDashboard() {
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <div className="flex items-center">
             <div className="p-2 bg-orange-100 rounded-lg">
-              <div className="h-6 w-6 text-orange-600">📸</div>
+              <Camera className="h-6 w-6 text-orange-600" />
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">Photos</p>
@@ -245,7 +246,7 @@ export function WeddingDashboard() {
             Upload Photos
           </Button>
           <Button variant="outline" className="justify-start">
-            <div className="h-4 w-4 mr-2">🤖</div>
+            <Bot className="h-4 w-4 mr-2" />
             AI Analysis
           </Button>
         </div>

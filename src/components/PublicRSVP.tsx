@@ -3,6 +3,7 @@ import { useParams, useSearchParams } from 'react-router-dom'
 import { supabase, InvitationToken } from '@/lib/supabase'
 import { RSVPForm } from '@/components/RSVPForm'
 import { Card } from '@/components/ui/Card'
+import { Spinner } from '@/components/ui/Spinner'
 import { Calendar, MapPin, Heart, CheckCircle, XCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import { isTokenExpired } from '@/lib/tokens'
@@ -216,7 +217,7 @@ export function PublicRSVP() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-pink-50 to-purple-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-500 mx-auto mb-4"></div>
+          <Spinner size="lg" className="mx-auto mb-4 border-pink-500" label="Loading invitation" />
           <p className="text-gray-600">Loading your invitation...</p>
         </div>
       </div>

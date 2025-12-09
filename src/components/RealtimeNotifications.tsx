@@ -100,10 +100,17 @@ export function RealtimeNotifications({ weddingId }: RealtimeNotificationsProps)
   if (notifications.length === 0) return null
 
   return (
-    <div className="fixed top-4 right-4 z-50 space-y-2 max-w-sm">
+    <div
+      className="fixed top-4 right-4 z-50 space-y-2 max-w-sm"
+      role="region"
+      aria-label="Notifications"
+      aria-live="polite"
+      aria-atomic="false"
+    >
       {notifications.slice(0, 3).map((notification) => (
         <div
           key={notification.id}
+          role="status"
           className={`bg-white rounded-lg shadow-lg border p-4 flex items-start space-x-3 ${
             notification.type === 'success' ? 'border-green-200' :
             notification.type === 'warning' ? 'border-yellow-200' :

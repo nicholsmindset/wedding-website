@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
+import { Spinner } from '@/components/ui/Spinner'
 import { Heart, Camera, Users, Calendar, Sparkles, Send } from 'lucide-react'
 
 export function LandingPage() {
@@ -70,13 +71,13 @@ export function LandingPage() {
                   required
                   className="flex-1"
                 />
-                <Button 
-                  type="submit" 
+                <Button
+                  type="submit"
                   disabled={loading}
                   className="bg-gradient-to-r from-pink-500 to-purple-600 text-white hover:from-pink-600 hover:to-purple-700"
                 >
                   {loading ? (
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    <Spinner size="sm" className="border-white" />
                   ) : (
                     <><Send className="h-4 w-4 mr-2" /> Get Started</>
                   )}
@@ -178,7 +179,7 @@ export function LandingPage() {
               Making your dream wedding a reality, one moment at a time.
             </p>
             <p className="text-gray-500 text-sm">
-              © 2024 Dream Wedding Day. All rights reserved.
+              © {new Date().getFullYear()} Dream Wedding Day. All rights reserved.
             </p>
           </div>
         </div>

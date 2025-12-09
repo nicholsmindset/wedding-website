@@ -4,17 +4,14 @@ import { LandingPage } from "@/components/LandingPage";
 import { WeddingDashboard } from "@/components/WeddingDashboard";
 import { PublicRSVP } from "@/components/PublicRSVP";
 import { PWAInstaller } from "@/components/PWAInstaller";
+import { SpinnerContainer } from "@/components/ui/Spinner";
 import { useAuth } from "@/contexts/AuthContext";
 
 function AppContent() {
   const { user, loading } = useAuth();
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-      </div>
-    );
+    return <SpinnerContainer fullScreen label="Loading application" />;
   }
 
   return user ? (

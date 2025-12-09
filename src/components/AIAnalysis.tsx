@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { analyzePhoto, PhotoAnalysis } from '@/lib/ai'
 import { Photo } from '@/lib/supabase'
 import { Button } from '@/components/ui/Button'
-import { Sparkles, Loader2, Camera, Heart, Users, Clock, Star } from 'lucide-react'
+import { Sparkles, Loader2, Camera, Heart, Users, Clock, Star, AlertTriangle, Search, Lightbulb } from 'lucide-react'
 
 interface AIAnalysisProps {
   photo: Photo
@@ -55,7 +55,7 @@ export function AIAnalysis({ photo, weddingId, onAnalysisComplete }: AIAnalysisP
     return (
       <div className="bg-red-50 border border-red-200 rounded-lg p-4">
         <div className="flex items-center space-x-2">
-          <div className="h-5 w-5 text-red-500">⚠️</div>
+          <AlertTriangle className="h-5 w-5 text-red-500" />
           <span className="text-red-700 font-medium">Analysis Error</span>
         </div>
         <p className="text-red-600 text-sm mt-2">{error}</p>
@@ -147,7 +147,7 @@ export function AIAnalysis({ photo, weddingId, onAnalysisComplete }: AIAnalysisP
         {data.key_elements && data.key_elements.length > 0 && (
           <div>
             <div className="flex items-center space-x-2 mb-2">
-              <div className="h-4 w-4 text-green-600">🔍</div>
+              <Search className="h-4 w-4 text-green-600" />
               <span className="font-medium text-gray-900">Key Elements</span>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -186,7 +186,7 @@ export function AIAnalysis({ photo, weddingId, onAnalysisComplete }: AIAnalysisP
         {data.special_notes && (
           <div className="bg-white rounded-lg p-4 border border-green-100">
             <div className="flex items-center space-x-2 mb-2">
-              <div className="h-4 w-4 text-green-600">💡</div>
+              <Lightbulb className="h-4 w-4 text-green-600" />
               <span className="font-medium text-gray-900">Special Notes</span>
             </div>
             <p className="text-sm text-gray-700">{data.special_notes}</p>

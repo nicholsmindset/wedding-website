@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Photo } from '@/lib/supabase'
 import { AIAnalysis } from '@/components/AIAnalysis'
-import { X, Download, Share2, Heart } from 'lucide-react'
+import { X, Download, Share2, Heart, Camera } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 
 interface PhotoGalleryProps {
@@ -23,7 +23,7 @@ export function PhotoGallery({ photos, weddingId, onPhotoClick }: PhotoGalleryPr
       <div className="text-center py-12">
         <div className="text-gray-400 mb-4">
           <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <span className="text-2xl">📸</span>
+            <Camera className="h-8 w-8 text-gray-400" />
           </div>
         </div>
         <h3 className="text-lg font-medium text-gray-900 mb-2">No photos yet</h3>
