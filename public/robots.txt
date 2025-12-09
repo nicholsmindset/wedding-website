@@ -1,0 +1,16 @@
+# robots.txt for Dream Wedding Day
+# https://www.robotstxt.org/
+
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /auth/
+
+# Allow search engines to index RSVP pages (they have token protection)
+Allow: /rsvp/
+
+# Sitemap location
+Sitemap: https://dreamweddingday.com/sitemap.xml
+
+# Crawl delay (optional, be nice to the server)
+Crawl-delay: 1

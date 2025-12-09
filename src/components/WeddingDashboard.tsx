@@ -7,12 +7,13 @@ import { PhotoUpload } from '@/components/PhotoUpload'
 import { PhotoGallery } from '@/components/PhotoGallery'
 import { RSVPManager } from '@/components/RSVPManager'
 import { RealtimeNotifications } from '@/components/RealtimeNotifications'
+import { WeddingBreadcrumb } from '@/components/Breadcrumb'
 import { Button } from '@/components/ui/Button'
-import { Calendar, MapPin, Users, DollarSign, Plus, Upload, X } from 'lucide-react'
+import { Calendar, MapPin, Users, DollarSign, Plus, Upload, X, LogOut } from 'lucide-react'
 import { format } from 'date-fns'
 
 export function WeddingDashboard() {
-  const { user } = useAuth()
+  const { user, signOut } = useAuth()
   const { 
     weddings, 
     currentWedding, 
@@ -60,6 +61,15 @@ export function WeddingDashboard() {
   if (!currentWedding && !showCreateForm) {
     return (
       <div className="max-w-4xl mx-auto p-6">
+        {/* Header with sign out */}
+        <div className="flex justify-between items-center mb-6">
+          <WeddingBreadcrumb />
+          <Button variant="outline" onClick={signOut} className="text-gray-600">
+            <LogOut className="h-4 w-4 mr-2" />
+            Sign Out
+          </Button>
+        </div>
+
         <div className="text-center py-12">
           <h1 className="text-3xl font-bold text-gray-900 mb-4">
             Welcome to Your Wedding Planner
@@ -134,6 +144,16 @@ export function WeddingDashboard() {
       {/* Real-time notifications */}
       <RealtimeNotifications weddingId={currentWedding.id} />
       <Toaster position="top-right" />
+
+      {/* Breadcrumb and Sign Out */}
+      <div className="flex justify-between items-center mb-4">
+        <WeddingBreadcrumb weddingTitle={currentWedding.title} />
+        <Button variant="outline" onClick={signOut} className="text-gray-600">
+          <LogOut className="h-4 w-4 mr-2" />
+          Sign Out
+        </Button>
+      </div>
+
       {/* Header */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
         <div className="flex items-center justify-between mb-4">

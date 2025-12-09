@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <!-- Homepage / Landing Page -->
+  <url>
+    <loc>https://dreamweddingday.com/</loc>
+    <lastmod>2024-12-08</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
+
+  <!--
+    Note: Dynamic routes like /rsvp/:weddingId are not included
+    as they require authentication tokens and are invitation-only.
+
+    For a production app, consider generating this sitemap dynamically
+    to include public wedding pages if you add that feature.
+  -->
+</urlset>
