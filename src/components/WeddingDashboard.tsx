@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Toaster } from 'sonner'
+import { Toaster, toast } from 'sonner'
 import { useAuth } from '@/contexts/AuthContext'
 import { useWeddingStore } from '@/stores/weddingStore'
 import { WeddingForm } from '@/components/WeddingForm'
@@ -7,29 +7,53 @@ import { PhotoUpload } from '@/components/PhotoUpload'
 import { PhotoGallery } from '@/components/PhotoGallery'
 import { RSVPManager } from '@/components/RSVPManager'
 import { RealtimeNotifications } from '@/components/RealtimeNotifications'
+import { EventForm, EventFormData } from '@/components/EventForm'
+import { ThemeToggle } from '@/components/ThemeToggle'
 import { Button } from '@/components/ui/Button'
-import { Calendar, MapPin, Users, DollarSign, Plus, Upload, X } from 'lucide-react'
+import { Calendar, MapPin, Users, DollarSign, Plus, Upload, X, LogOut } from 'lucide-react'
 import { format } from 'date-fns'
 import { SEO, generateWeddingEventSchema, generateBreadcrumbSchema } from '@/components/SEO'
 
 export function WeddingDashboard() {
-  const { user } = useAuth()
-  const { 
-    weddings, 
-    currentWedding, 
-    events, 
-    guests, 
+  const { user, signOut } = useAuth()
+  const {
+    weddings,
+    currentWedding,
+    events,
+    guests,
     photos,
     rsvps,
-    loading, 
-    fetchWeddings, 
-    setCurrentWedding, 
+    loading,
+    fetchWeddings,
+    setCurrentWedding,
     fetchWeddingDetails,
-    subscribeToWedding 
+    subscribeToWedding,
+    createEvent
   } = useWeddingStore()
 
   const [showCreateForm, setShowCreateForm] = useState(false)
   const [showPhotoUpload, setShowPhotoUpload] = useState(false)
+  const [showEventForm, setShowEventForm] = useState(false)
+
+  const handleCreateEvent = async (eventData: EventFormData) => {
+    try {
+      await createEvent(eventData)
+      toast.success('Event created successfully!')
+      setShowEventForm(false)
+    } catch (error) {
+      toast.error('Failed to create event')
+      throw error
+    }
+  }
+
+  const handleSignOut = async () => {
+    try {
+      await signOut()
+      toast.success('Signed out successfully')
+    } catch {
+      toast.error('Failed to sign out')
+    }
+  }
 
   useEffect(() => {
     if (user) {
@@ -174,22 +198,33 @@ export function WeddingDashboard() {
       <RealtimeNotifications weddingId={currentWedding.id} />
       <Toaster position="top-right" />
       {/* Header */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 mb-6">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
               {currentWedding.title}
             </h1>
-            <p className="text-gray-600 mt-1">
+            <p className="text-gray-600 dark:text-gray-300 mt-1">
               {currentWedding.description}
             </p>
           </div>
-          <Button
-            variant="outline"
-            onClick={() => setCurrentWedding(null)}
-          >
-            Back to Weddings
-          </Button>
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <Button
+              variant="outline"
+              onClick={() => setCurrentWedding(null)}
+            >
+              Back to Weddings
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleSignOut}
+              className="text-gray-600 hover:text-red-600"
+            >
+              <LogOut className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -266,12 +301,12 @@ export function WeddingDashboard() {
       </div>
 
       {/* Quick Actions */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <h2 className="text-xl font-semibold text-gray-900 mb-4">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 mb-6">
+        <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
           Quick Actions
         </h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Button variant="outline" className="justify-start">
+          <Button variant="outline" className="justify-start" onClick={() => setShowEventForm(true)}>
             <Calendar className="h-4 w-4 mr-2" />
             Add Event
           </Button>
@@ -288,6 +323,56 @@ export function WeddingDashboard() {
             AI Analysis
           </Button>
         </div>
+      </div>
+
+      {/* Events Timeline */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 mb-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+            Events Timeline ({events.length})
+          </h2>
+          <Button size="sm" onClick={() => setShowEventForm(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Event
+          </Button>
+        </div>
+        {events.length === 0 ? (
+          <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+            <Calendar className="h-12 w-12 mx-auto mb-3 opacity-50" />
+            <p>No events scheduled yet</p>
+            <p className="text-sm">Add your first event to get started</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {events
+              .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime())
+              .map((event) => (
+                <div
+                  key={event.id}
+                  className="border-l-4 border-pink-500 pl-4 py-2"
+                >
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h3 className="font-semibold text-gray-900 dark:text-white">{event.title}</h3>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        {format(new Date(event.start_time), 'EEEE, MMMM d, yyyy • h:mm a')}
+                        {event.end_time && ` - ${format(new Date(event.end_time), 'h:mm a')}`}
+                      </p>
+                      {event.location && (
+                        <p className="text-sm text-gray-500 dark:text-gray-400 flex items-center mt-1">
+                          <MapPin className="h-3 w-3 mr-1" />
+                          {event.location}
+                        </p>
+                      )}
+                      {event.description && (
+                        <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">{event.description}</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+          </div>
+        )}
       </div>
 
       {/* RSVP Management */}
@@ -314,10 +399,10 @@ export function WeddingDashboard() {
       {/* Photo Upload Modal */}
       {showPhotoUpload && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="bg-white dark:bg-gray-800 rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6">
               <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xl font-semibold text-gray-900">Upload Photos</h3>
+                <h3 className="text-xl font-semibold text-gray-900 dark:text-white">Upload Photos</h3>
                 <Button
                   variant="ghost"
                   onClick={() => setShowPhotoUpload(false)}
@@ -331,6 +416,30 @@ export function WeddingDashboard() {
                   setShowPhotoUpload(false)
                   fetchWeddingDetails(currentWedding.id)
                 }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Event Form Modal */}
+      {showEventForm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg max-w-lg w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-semibold text-gray-900 dark:text-white">Add New Event</h3>
+                <Button
+                  variant="ghost"
+                  onClick={() => setShowEventForm(false)}
+                >
+                  <X className="h-5 w-5" />
+                </Button>
+              </div>
+              <EventForm
+                weddingId={currentWedding.id}
+                onSubmit={handleCreateEvent}
+                onCancel={() => setShowEventForm(false)}
               />
             </div>
           </div>

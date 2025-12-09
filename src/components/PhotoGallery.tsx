@@ -3,6 +3,7 @@ import { Photo } from '@/lib/supabase'
 import { AIAnalysis } from '@/components/AIAnalysis'
 import { X, Download, Share2, Heart } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
+import { toast } from 'sonner'
 
 interface PhotoGalleryProps {
   photos: Photo[]
@@ -12,10 +13,80 @@ interface PhotoGalleryProps {
 
 export function PhotoGallery({ photos, weddingId, onPhotoClick }: PhotoGalleryProps) {
   const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null)
+  const [downloading, setDownloading] = useState(false)
+  const [liked, setLiked] = useState<Set<string>>(new Set())
 
   const getPhotoUrl = (photo: Photo) => {
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
     return `${supabaseUrl}/storage/v1/object/public/wedding-photos/${photo.storage_path}`
+  }
+
+  const handleDownload = async (photo: Photo) => {
+    setDownloading(true)
+    try {
+      const response = await fetch(getPhotoUrl(photo))
+      if (!response.ok) throw new Error('Failed to fetch photo')
+
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = photo.original_filename
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(url)
+
+      toast.success('Photo downloaded successfully!')
+    } catch (error) {
+      console.error('Download error:', error)
+      toast.error('Failed to download photo')
+    } finally {
+      setDownloading(false)
+    }
+  }
+
+  const handleShare = async (photo: Photo) => {
+    const url = getPhotoUrl(photo)
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: photo.original_filename,
+          text: 'Check out this wedding photo!',
+          url: url,
+        })
+      } catch (error) {
+        if ((error as Error).name !== 'AbortError') {
+          await copyToClipboard(url)
+        }
+      }
+    } else {
+      await copyToClipboard(url)
+    }
+  }
+
+  const copyToClipboard = async (url: string) => {
+    try {
+      await navigator.clipboard.writeText(url)
+      toast.success('Link copied to clipboard!')
+    } catch {
+      toast.error('Failed to copy link')
+    }
+  }
+
+  const handleLike = (photo: Photo) => {
+    setLiked(prev => {
+      const newLiked = new Set(prev)
+      if (newLiked.has(photo.id)) {
+        newLiked.delete(photo.id)
+        toast.success('Removed from favorites')
+      } else {
+        newLiked.add(photo.id)
+        toast.success('Added to favorites!')
+      }
+      return newLiked
+    })
   }
 
   if (photos.length === 0) {
@@ -116,16 +187,34 @@ export function PhotoGallery({ photos, weddingId, onPhotoClick }: PhotoGalleryPr
                   </div>
                   
                   <div className="flex gap-2">
-                    <Button variant="outline" size="sm">
-                      <Heart className="h-4 w-4 mr-2" />
-                      Like
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleLike(selectedPhoto)}
+                      className={liked.has(selectedPhoto.id) ? 'text-red-500 border-red-500' : ''}
+                    >
+                      <Heart className={`h-4 w-4 mr-2 ${liked.has(selectedPhoto.id) ? 'fill-current' : ''}`} />
+                      {liked.has(selectedPhoto.id) ? 'Liked' : 'Like'}
                     </Button>
-                    <Button variant="outline" size="sm">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleShare(selectedPhoto)}
+                    >
                       <Share2 className="h-4 w-4 mr-2" />
                       Share
                     </Button>
-                    <Button variant="outline" size="sm">
-                      <Download className="h-4 w-4 mr-2" />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleDownload(selectedPhoto)}
+                      disabled={downloading}
+                    >
+                      {downloading ? (
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600 mr-2" />
+                      ) : (
+                        <Download className="h-4 w-4 mr-2" />
+                      )}
                       Download
                     </Button>
                   </div>

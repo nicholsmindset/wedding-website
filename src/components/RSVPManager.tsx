@@ -178,8 +178,42 @@ export function RSVPManager({ wedding, events, onUpdate }: RSVPManagerProps) {
           continue
         }
 
-        // In a real implementation, you'd send an email here via a service like SendGrid, Resend, etc.
-        console.log(`Invitation for ${invitation.name} (${invitation.email}): ${magicLink}`)
+        // Get the event data to include in the email
+        const selectedEventData = events.find(e => e.id === selectedEvent)
+        if (!selectedEventData) continue
+
+        // Generate the email content
+        const emailContent = generateRSVPInvitationEmail({
+          wedding,
+          guest: { id: guestId, wedding_id: wedding.id, name: invitation.name, email: invitation.email, phone: null, dietary_restrictions: null, plus_one: false, created_at: '', updated_at: '' },
+          event: selectedEventData,
+          magicLink,
+          customMessage: invitation.message
+        })
+
+        // Send the email via our API
+        try {
+          const response = await fetch('/api/email/send', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              to: invitation.email,
+              subject: emailContent.subject,
+              html: emailContent.html,
+              text: emailContent.text
+            })
+          })
+
+          const result = await response.json()
+          if (result.mock) {
+            console.log(`[DEV] Email simulated for ${invitation.name} (${invitation.email}): ${magicLink}`)
+          } else if (!result.success) {
+            console.error(`Failed to send email to ${invitation.email}:`, result.error)
+          }
+        } catch (emailError) {
+          console.error(`Error sending email to ${invitation.email}:`, emailError)
+          // Continue even if email fails - the invitation link is still valid
+        }
       }
 
       toast.success(`${validInvitations.length} invitations sent successfully!`)
