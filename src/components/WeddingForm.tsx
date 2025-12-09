@@ -1,24 +1,28 @@
 import { useState } from 'react'
 import { useWeddingStore } from '@/stores/weddingStore'
+import { Wedding } from '@/lib/supabase'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Textarea } from '@/components/ui/Textarea'
 import { Calendar } from 'lucide-react'
 
 interface WeddingFormProps {
+  wedding?: Wedding
   onSuccess?: () => void
   onCancel?: () => void
 }
 
-export function WeddingForm({ onSuccess, onCancel }: WeddingFormProps) {
-  const { createWedding, loading } = useWeddingStore()
+export function WeddingForm({ wedding, onSuccess, onCancel }: WeddingFormProps) {
+  const { createWedding, updateWedding, loading } = useWeddingStore()
+  const isEditing = !!wedding
+
   const [formData, setFormData] = useState({
-    title: '',
-    description: '',
-    date: '',
-    venue_name: '',
-    venue_address: '',
-    budget: ''
+    title: wedding?.title || '',
+    description: wedding?.description || '',
+    date: wedding?.date || '',
+    venue_name: wedding?.venue_name || '',
+    venue_address: wedding?.venue_address || '',
+    budget: wedding?.budget?.toString() || ''
   })
   const [error, setError] = useState<string | null>(null)
 
@@ -27,15 +31,23 @@ export function WeddingForm({ onSuccess, onCancel }: WeddingFormProps) {
     setError(null)
 
     try {
-      await createWedding({
+      const weddingData = {
         title: formData.title,
         description: formData.description || null,
         date: formData.date,
         venue_name: formData.venue_name || null,
         venue_address: formData.venue_address || null,
-        budget: formData.budget ? parseFloat(formData.budget) : null,
-        created_by: '' // This will be set in the store
-      })
+        budget: formData.budget ? parseFloat(formData.budget) : null
+      }
+
+      if (isEditing && wedding) {
+        await updateWedding(wedding.id, weddingData)
+      } else {
+        await createWedding({
+          ...weddingData,
+          created_by: '' // This will be set in the store
+        })
+      }
       onSuccess?.()
     } catch (err) {
       setError((err as Error).message)
@@ -156,7 +168,10 @@ export function WeddingForm({ onSuccess, onCancel }: WeddingFormProps) {
           disabled={loading}
           className="flex-1"
         >
-          {loading ? 'Creating...' : 'Create Wedding'}
+          {loading
+            ? (isEditing ? 'Updating...' : 'Creating...')
+            : (isEditing ? 'Update Wedding' : 'Create Wedding')
+          }
         </Button>
         {onCancel && (
           <Button

@@ -1,34 +1,41 @@
 import { useEffect, useState } from 'react'
-import { Toaster } from 'sonner'
+import { Toaster, toast } from 'sonner'
 import { useAuth } from '@/contexts/AuthContext'
 import { useWeddingStore } from '@/stores/weddingStore'
 import { WeddingForm } from '@/components/WeddingForm'
+import { EventForm } from '@/components/EventForm'
+import { GuestForm } from '@/components/GuestForm'
 import { PhotoUpload } from '@/components/PhotoUpload'
 import { PhotoGallery } from '@/components/PhotoGallery'
 import { RSVPManager } from '@/components/RSVPManager'
 import { RealtimeNotifications } from '@/components/RealtimeNotifications'
 import { Button } from '@/components/ui/Button'
-import { Calendar, MapPin, Users, DollarSign, Plus, Upload, X } from 'lucide-react'
+import { Calendar, MapPin, Users, DollarSign, Plus, Upload, X, Edit2, Trash2, LogOut } from 'lucide-react'
 import { format } from 'date-fns'
 
 export function WeddingDashboard() {
-  const { user } = useAuth()
-  const { 
-    weddings, 
-    currentWedding, 
-    events, 
-    guests, 
+  const { user, signOut } = useAuth()
+  const {
+    weddings,
+    currentWedding,
+    events,
+    guests,
     photos,
     rsvps,
-    loading, 
-    fetchWeddings, 
-    setCurrentWedding, 
+    loading,
+    fetchWeddings,
+    setCurrentWedding,
     fetchWeddingDetails,
-    subscribeToWedding 
+    subscribeToWedding,
+    deleteWedding
   } = useWeddingStore()
 
   const [showCreateForm, setShowCreateForm] = useState(false)
+  const [showEditForm, setShowEditForm] = useState(false)
+  const [showEventForm, setShowEventForm] = useState(false)
+  const [showGuestForm, setShowGuestForm] = useState(false)
   const [showPhotoUpload, setShowPhotoUpload] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
   useEffect(() => {
     if (user) {
@@ -145,12 +152,31 @@ export function WeddingDashboard() {
               {currentWedding.description}
             </p>
           </div>
-          <Button
-            variant="outline"
-            onClick={() => setCurrentWedding(null)}
-          >
-            Back to Weddings
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowEditForm(true)}
+            >
+              <Edit2 className="h-4 w-4 mr-1" />
+              Edit
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowDeleteConfirm(true)}
+              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+            >
+              <Trash2 className="h-4 w-4 mr-1" />
+              Delete
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => setCurrentWedding(null)}
+            >
+              Back to Weddings
+            </Button>
+          </div>
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -227,16 +253,16 @@ export function WeddingDashboard() {
       </div>
 
       {/* Quick Actions */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
         <h2 className="text-xl font-semibold text-gray-900 mb-4">
           Quick Actions
         </h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Button variant="outline" className="justify-start">
+          <Button variant="outline" className="justify-start" onClick={() => setShowEventForm(true)}>
             <Calendar className="h-4 w-4 mr-2" />
             Add Event
           </Button>
-          <Button variant="outline" className="justify-start">
+          <Button variant="outline" className="justify-start" onClick={() => setShowGuestForm(true)}>
             <Users className="h-4 w-4 mr-2" />
             Add Guest
           </Button>
@@ -244,9 +270,9 @@ export function WeddingDashboard() {
             <Upload className="h-4 w-4 mr-2" />
             Upload Photos
           </Button>
-          <Button variant="outline" className="justify-start">
-            <div className="h-4 w-4 mr-2">🤖</div>
-            AI Analysis
+          <Button variant="outline" className="justify-start" onClick={() => signOut()}>
+            <LogOut className="h-4 w-4 mr-2" />
+            Sign Out
           </Button>
         </div>
       </div>
@@ -293,6 +319,130 @@ export function WeddingDashboard() {
                   fetchWeddingDetails(currentWedding.id)
                 }}
               />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Event Form Modal */}
+      {showEventForm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg max-w-lg w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-semibold text-gray-900">Add Event</h3>
+                <Button
+                  variant="ghost"
+                  onClick={() => setShowEventForm(false)}
+                >
+                  <X className="h-5 w-5" />
+                </Button>
+              </div>
+              <EventForm
+                weddingId={currentWedding.id}
+                onSuccess={() => {
+                  setShowEventForm(false)
+                  fetchWeddingDetails(currentWedding.id)
+                  toast.success('Event created successfully!')
+                }}
+                onCancel={() => setShowEventForm(false)}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Guest Form Modal */}
+      {showGuestForm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg max-w-lg w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-semibold text-gray-900">Add Guest</h3>
+                <Button
+                  variant="ghost"
+                  onClick={() => setShowGuestForm(false)}
+                >
+                  <X className="h-5 w-5" />
+                </Button>
+              </div>
+              <GuestForm
+                weddingId={currentWedding.id}
+                onSuccess={() => {
+                  setShowGuestForm(false)
+                  fetchWeddingDetails(currentWedding.id)
+                  toast.success('Guest added successfully!')
+                }}
+                onCancel={() => setShowGuestForm(false)}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Wedding Modal */}
+      {showEditForm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-semibold text-gray-900">Edit Wedding</h3>
+                <Button
+                  variant="ghost"
+                  onClick={() => setShowEditForm(false)}
+                >
+                  <X className="h-5 w-5" />
+                </Button>
+              </div>
+              <WeddingForm
+                wedding={currentWedding}
+                onSuccess={() => {
+                  setShowEditForm(false)
+                  toast.success('Wedding updated successfully!')
+                }}
+                onCancel={() => setShowEditForm(false)}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg max-w-md w-full p-6">
+            <div className="text-center">
+              <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
+                <Trash2 className="h-6 w-6 text-red-600" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Delete Wedding</h3>
+              <p className="text-gray-600 mb-6">
+                Are you sure you want to delete "{currentWedding.title}"? This will permanently remove all events, guests, RSVPs, and photos. This action cannot be undone.
+              </p>
+              <div className="flex gap-3">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowDeleteConfirm(false)}
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={async () => {
+                    try {
+                      await deleteWedding(currentWedding.id)
+                      setShowDeleteConfirm(false)
+                      setCurrentWedding(null)
+                      toast.success('Wedding deleted successfully')
+                    } catch {
+                      toast.error('Failed to delete wedding')
+                    }
+                  }}
+                  className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+                >
+                  Delete
+                </Button>
+              </div>
             </div>
           </div>
         </div>

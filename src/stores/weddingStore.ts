@@ -11,15 +11,18 @@ interface WeddingStore {
   photos: Photo[]
   loading: boolean
   error: string | null
-  
+
   // Actions
   fetchWeddings: () => Promise<void>
   setCurrentWedding: (wedding: Wedding | null) => void
   createWedding: (wedding: Omit<Wedding, 'id' | 'created_at' | 'updated_at'>) => Promise<void>
+  updateWedding: (weddingId: string, data: Partial<Omit<Wedding, 'id' | 'created_at' | 'updated_at' | 'created_by'>>) => Promise<void>
+  deleteWedding: (weddingId: string) => Promise<void>
   fetchWeddingDetails: (weddingId: string) => Promise<void>
   createEvent: (event: Omit<Event, 'id' | 'created_at' | 'updated_at'>) => Promise<void>
   createGuest: (guest: Omit<Guest, 'id' | 'created_at' | 'updated_at'>) => Promise<void>
   uploadPhoto: (file: File, weddingId: string) => Promise<void>
+  deletePhoto: (photoId: string, storagePath: string) => Promise<void>
   subscribeToWedding: (weddingId: string) => () => void
 }
 
@@ -81,6 +84,66 @@ export const useWeddingStore = create<WeddingStore>((set) => ({
       set(state => ({
         weddings: [...state.weddings, data],
         currentWedding: data,
+        loading: false
+      }))
+    } catch (error) {
+      set({ error: (error as Error).message, loading: false })
+      throw error
+    }
+  },
+
+  updateWedding: async (weddingId, weddingData) => {
+    set({ loading: true, error: null })
+    try {
+      const { data, error } = await supabase
+        .from('weddings')
+        .update(weddingData)
+        .eq('id', weddingId)
+        .select()
+        .single()
+
+      if (error) throw error
+
+      set(state => ({
+        weddings: state.weddings.map(w => w.id === weddingId ? data : w),
+        currentWedding: state.currentWedding?.id === weddingId ? data : state.currentWedding,
+        loading: false
+      }))
+    } catch (error) {
+      set({ error: (error as Error).message, loading: false })
+      throw error
+    }
+  },
+
+  deleteWedding: async (weddingId) => {
+    set({ loading: true, error: null })
+    try {
+      // Delete all photos from storage first
+      const { data: photos } = await supabase
+        .from('photos')
+        .select('storage_path')
+        .eq('wedding_id', weddingId)
+
+      if (photos && photos.length > 0) {
+        const paths = photos.map(p => p.storage_path)
+        await supabase.storage.from('wedding-photos').remove(paths)
+      }
+
+      // Delete the wedding (cascade will handle related records)
+      const { error } = await supabase
+        .from('weddings')
+        .delete()
+        .eq('id', weddingId)
+
+      if (error) throw error
+
+      set(state => ({
+        weddings: state.weddings.filter(w => w.id !== weddingId),
+        currentWedding: state.currentWedding?.id === weddingId ? null : state.currentWedding,
+        events: state.currentWedding?.id === weddingId ? [] : state.events,
+        guests: state.currentWedding?.id === weddingId ? [] : state.guests,
+        rsvps: state.currentWedding?.id === weddingId ? [] : state.rsvps,
+        photos: state.currentWedding?.id === weddingId ? [] : state.photos,
         loading: false
       }))
     } catch (error) {
@@ -199,6 +262,34 @@ export const useWeddingStore = create<WeddingStore>((set) => ({
       
       set(state => ({
         photos: [...state.photos, photo],
+        loading: false
+      }))
+    } catch (error) {
+      set({ error: (error as Error).message, loading: false })
+      throw error
+    }
+  },
+
+  deletePhoto: async (photoId: string, storagePath: string) => {
+    set({ loading: true, error: null })
+    try {
+      // Delete from storage
+      const { error: storageError } = await supabase.storage
+        .from('wedding-photos')
+        .remove([storagePath])
+
+      if (storageError) throw storageError
+
+      // Delete from database
+      const { error: dbError } = await supabase
+        .from('photos')
+        .delete()
+        .eq('id', photoId)
+
+      if (dbError) throw dbError
+
+      set(state => ({
+        photos: state.photos.filter(p => p.id !== photoId),
         loading: false
       }))
     } catch (error) {

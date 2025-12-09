@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { supabase } from '@/lib/supabase'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
@@ -6,11 +6,12 @@ import { Input } from '@/components/ui/Input'
 import { Textarea } from '@/components/ui/Textarea'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/Table'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/Dialog'
-import { Mail, Plus, Users, Send, CheckCircle, XCircle, Clock, Copy, Download, Eye } from 'lucide-react'
+import { Mail, Plus, Users, Send, CheckCircle, XCircle, Clock, Copy, Download, Eye, Search, Filter } from 'lucide-react'
 import { toast } from 'sonner'
 import { Wedding, Guest, RSVP, Event } from '@/lib/supabase'
 import { generateRSVPInvitationEmail } from '@/utils/emailTemplates'
 import { generateSecureToken, generateMagicLinkUrl, getTokenExpirationDate } from '@/lib/tokens'
+import { sendEmail } from '@/lib/email'
 
 interface RSVPManagerProps {
   wedding: Wedding
@@ -32,6 +33,8 @@ interface EmailPreviewData {
   email: string
 }
 
+type StatusFilter = 'all' | 'confirmed' | 'declined' | 'pending' | 'not_invited'
+
 export function RSVPManager({ wedding, events, onUpdate }: RSVPManagerProps) {
   const [guests, setGuests] = useState<Guest[]>([])
   const [rsvps, setRsvps] = useState<RSVP[]>([])
@@ -42,6 +45,10 @@ export function RSVPManager({ wedding, events, onUpdate }: RSVPManagerProps) {
   const [selectedEvent, setSelectedEvent] = useState<string>('')
   const [previewDialogOpen, setPreviewDialogOpen] = useState(false)
   const [previewData, setPreviewData] = useState<EmailPreviewData | null>(null)
+
+  // Search and filter state
+  const [searchQuery, setSearchQuery] = useState('')
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
 
   useEffect(() => {
     fetchGuestsAndRSVPs()
@@ -178,8 +185,40 @@ export function RSVPManager({ wedding, events, onUpdate }: RSVPManagerProps) {
           continue
         }
 
-        // In a real implementation, you'd send an email here via a service like SendGrid, Resend, etc.
-        console.log(`Invitation for ${invitation.name} (${invitation.email}): ${magicLink}`)
+        // Get event data for email
+        const selectedEventData = events.find(e => e.id === selectedEvent)
+        if (!selectedEventData) continue
+
+        // Generate email content
+        const emailContent = generateRSVPInvitationEmail({
+          wedding,
+          guest: {
+            id: guestId,
+            wedding_id: wedding.id,
+            name: invitation.name,
+            email: invitation.email,
+            phone: null,
+            dietary_restrictions: null,
+            plus_one: false,
+            created_at: '',
+            updated_at: ''
+          },
+          event: selectedEventData,
+          magicLink,
+          customMessage: invitation.message
+        })
+
+        // Send email using email service
+        const emailResult = await sendEmail({
+          to: invitation.email,
+          subject: emailContent.subject,
+          html: emailContent.html,
+          text: emailContent.text
+        })
+
+        if (!emailResult.success) {
+          console.error(`Failed to send email to ${invitation.email}:`, emailResult.error)
+        }
       }
 
       toast.success(`${validInvitations.length} invitations sent successfully!`)
@@ -310,6 +349,23 @@ export function RSVPManager({ wedding, events, onUpdate }: RSVPManagerProps) {
     declined: guests.filter(g => getRSVPStatus(g.id) === 'declined').length,
     pending: guests.filter(g => getRSVPStatus(g.id) === 'pending').length
   }
+
+  // Filter guests based on search query and status filter
+  const filteredGuests = useMemo(() => {
+    return guests.filter(guest => {
+      // Search filter
+      const matchesSearch = searchQuery === '' ||
+        guest.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        guest.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (guest.phone && guest.phone.includes(searchQuery))
+
+      // Status filter
+      const guestStatus = getRSVPStatus(guest.id)
+      const matchesStatus = statusFilter === 'all' || guestStatus === statusFilter
+
+      return matchesSearch && matchesStatus
+    })
+  }, [guests, searchQuery, statusFilter, rsvps])
 
   return (
     <Card className="p-6">
@@ -444,23 +500,69 @@ export function RSVPManager({ wedding, events, onUpdate }: RSVPManagerProps) {
 
       {/* Stats */}
       <div className="grid grid-cols-4 gap-4 mb-6">
-        <div className="bg-blue-50 rounded-lg p-4 text-center">
+        <button
+          onClick={() => setStatusFilter('all')}
+          className={`rounded-lg p-4 text-center transition-all ${statusFilter === 'all' ? 'ring-2 ring-blue-500 bg-blue-100' : 'bg-blue-50 hover:bg-blue-100'}`}
+        >
           <div className="text-2xl font-bold text-blue-600">{stats.total}</div>
           <div className="text-sm text-blue-600">Total Guests</div>
-        </div>
-        <div className="bg-green-50 rounded-lg p-4 text-center">
+        </button>
+        <button
+          onClick={() => setStatusFilter('confirmed')}
+          className={`rounded-lg p-4 text-center transition-all ${statusFilter === 'confirmed' ? 'ring-2 ring-green-500 bg-green-100' : 'bg-green-50 hover:bg-green-100'}`}
+        >
           <div className="text-2xl font-bold text-green-600">{stats.confirmed}</div>
           <div className="text-sm text-green-600">Confirmed</div>
-        </div>
-        <div className="bg-red-50 rounded-lg p-4 text-center">
+        </button>
+        <button
+          onClick={() => setStatusFilter('declined')}
+          className={`rounded-lg p-4 text-center transition-all ${statusFilter === 'declined' ? 'ring-2 ring-red-500 bg-red-100' : 'bg-red-50 hover:bg-red-100'}`}
+        >
           <div className="text-2xl font-bold text-red-600">{stats.declined}</div>
           <div className="text-sm text-red-600">Declined</div>
-        </div>
-        <div className="bg-yellow-50 rounded-lg p-4 text-center">
+        </button>
+        <button
+          onClick={() => setStatusFilter('pending')}
+          className={`rounded-lg p-4 text-center transition-all ${statusFilter === 'pending' ? 'ring-2 ring-yellow-500 bg-yellow-100' : 'bg-yellow-50 hover:bg-yellow-100'}`}
+        >
           <div className="text-2xl font-bold text-yellow-600">{stats.pending}</div>
           <div className="text-sm text-yellow-600">Pending</div>
-        </div>
+        </button>
       </div>
+
+      {/* Search and Filter */}
+      <div className="flex flex-col sm:flex-row gap-4 mb-6">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <Input
+            type="text"
+            placeholder="Search by name, email, or phone..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+        {(searchQuery || statusFilter !== 'all') && (
+          <Button
+            variant="outline"
+            onClick={() => {
+              setSearchQuery('')
+              setStatusFilter('all')
+            }}
+          >
+            <Filter className="h-4 w-4 mr-2" />
+            Clear Filters
+          </Button>
+        )}
+      </div>
+
+      {/* Results count */}
+      {(searchQuery || statusFilter !== 'all') && (
+        <div className="text-sm text-gray-600 mb-4">
+          Showing {filteredGuests.length} of {guests.length} guests
+          {statusFilter !== 'all' && ` (${statusFilter})`}
+        </div>
+      )}
 
       {/* Guest List */}
       <div className="overflow-x-auto">
@@ -476,7 +578,7 @@ export function RSVPManager({ wedding, events, onUpdate }: RSVPManagerProps) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {guests.map((guest) => {
+            {filteredGuests.map((guest) => {
               const status = getRSVPStatus(guest.id)
               return (
                 <TableRow key={guest.id}>
@@ -512,6 +614,14 @@ export function RSVPManager({ wedding, events, onUpdate }: RSVPManagerProps) {
             <Users className="h-12 w-12 mx-auto mb-4 text-gray-300" />
             <p>No guests added yet</p>
             <p className="text-sm">Send invitations to start building your guest list</p>
+          </div>
+        )}
+
+        {guests.length > 0 && filteredGuests.length === 0 && (
+          <div className="text-center py-8 text-gray-500">
+            <Search className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+            <p>No guests match your search</p>
+            <p className="text-sm">Try adjusting your search or filter criteria</p>
           </div>
         )}
       </div>
