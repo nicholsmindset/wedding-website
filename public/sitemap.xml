@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9
+        http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd">
+
+  <!-- Homepage / Landing Page -->
+  <url>
+    <loc>https://dreamweddingday.com/</loc>
+    <lastmod>2024-12-09</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
+
+  <!--
+    Note: Dynamic RSVP pages (e.g., /rsvp/:weddingId) are not included here
+    as they are personalized per wedding. For dynamic sitemap generation,
+    consider implementing a server-side sitemap generator that queries
+    the database for active, public wedding pages.
+
+    Example dynamic entries would look like:
+    <url>
+      <loc>https://dreamweddingday.com/rsvp/wedding-id-here</loc>
+      <lastmod>2024-12-09</lastmod>
+      <changefreq>monthly</changefreq>
+      <priority>0.8</priority>
+    </url>
+  -->
+
+</urlset>

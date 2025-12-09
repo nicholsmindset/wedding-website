@@ -10,6 +10,7 @@ import { RealtimeNotifications } from '@/components/RealtimeNotifications'
 import { Button } from '@/components/ui/Button'
 import { Calendar, MapPin, Users, DollarSign, Plus, Upload, X } from 'lucide-react'
 import { format } from 'date-fns'
+import { SEO, generateWeddingEventSchema, generateBreadcrumbSchema } from '@/components/SEO'
 
 export function WeddingDashboard() {
   const { user } = useAuth()
@@ -52,6 +53,11 @@ export function WeddingDashboard() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
+        <SEO
+          title="Loading Dashboard"
+          description="Loading your wedding planning dashboard..."
+          noIndex={true}
+        />
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
       </div>
     )
@@ -60,6 +66,11 @@ export function WeddingDashboard() {
   if (!currentWedding && !showCreateForm) {
     return (
       <div className="max-w-4xl mx-auto p-6">
+        <SEO
+          title="Wedding Dashboard"
+          description="Manage your weddings, track RSVPs, upload photos, and coordinate your special day with our intuitive wedding planning dashboard."
+          noIndex={true}
+        />
         <div className="text-center py-12">
           <h1 className="text-3xl font-bold text-gray-900 mb-4">
             Welcome to Your Wedding Planner
@@ -111,6 +122,11 @@ export function WeddingDashboard() {
   if (showCreateForm) {
     return (
       <div className="max-w-2xl mx-auto p-6">
+        <SEO
+          title="Create Your Wedding"
+          description="Start planning your dream wedding. Enter your wedding details to get started with our wedding planning platform."
+          noIndex={true}
+        />
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
           <h2 className="text-2xl font-bold text-gray-900 mb-6">
             Create Your Wedding
@@ -129,8 +145,31 @@ export function WeddingDashboard() {
     return null
   }
 
+  const dashboardStructuredData = currentWedding
+    ? [
+        generateWeddingEventSchema({
+          title: currentWedding.title,
+          description: currentWedding.description || undefined,
+          date: currentWedding.date,
+          venue_name: currentWedding.venue_name || undefined,
+          venue_address: currentWedding.venue_address || undefined,
+        }),
+        generateBreadcrumbSchema([
+          { name: 'Home', url: '/' },
+          { name: 'Dashboard', url: '/dashboard' },
+          { name: currentWedding.title, url: `/wedding/${currentWedding.id}` },
+        ]),
+      ]
+    : []
+
   return (
     <div className="max-w-6xl mx-auto p-6">
+      <SEO
+        title={currentWedding.title}
+        description={currentWedding.description || `Wedding planning dashboard for ${currentWedding.title}. Manage guests, RSVPs, photos, and timeline.`}
+        noIndex={true}
+        structuredData={dashboardStructuredData}
+      />
       {/* Real-time notifications */}
       <RealtimeNotifications weddingId={currentWedding.id} />
       <Toaster position="top-right" />

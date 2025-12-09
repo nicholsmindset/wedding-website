@@ -1,0 +1,17 @@
+# Dream Wedding Day - robots.txt
+# https://dreamweddingday.com
+
+User-agent: *
+Allow: /
+Disallow: /auth/
+Disallow: /api/
+
+# Allow search engines to find the sitemap
+Sitemap: https://dreamweddingday.com/sitemap.xml
+
+# Crawl delay (optional, be kind to the server)
+Crawl-delay: 1
+
+# Block specific bots if needed (uncomment as necessary)
+# User-agent: BadBot
+# Disallow: /

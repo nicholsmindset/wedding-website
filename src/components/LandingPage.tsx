@@ -3,6 +3,26 @@ import { useAuth } from '@/contexts/AuthContext'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Heart, Camera, Users, Calendar, Sparkles, Send } from 'lucide-react'
+import { SEO, organizationSchema, websiteSchema, softwareApplicationSchema, generateFAQSchema } from '@/components/SEO'
+
+const landingPageFAQs = [
+  {
+    question: 'What is Dream Wedding Day?',
+    answer: 'Dream Wedding Day is an AI-powered wedding planning platform that helps couples manage their wedding with features like smart RSVP management, AI photo analysis, timeline coordination, and real-time updates.',
+  },
+  {
+    question: 'How does the AI photo analysis work?',
+    answer: 'Our AI technology automatically organizes and analyzes your wedding photos, identifying key moments, people, and scenes to help you capture and relive every precious memory from your special day.',
+  },
+  {
+    question: 'Is Dream Wedding Day free to use?',
+    answer: 'Yes! Dream Wedding Day offers a free tier that includes essential wedding planning features. Premium features are available for couples who want additional functionality.',
+  },
+  {
+    question: 'How do I invite guests to RSVP?',
+    answer: 'Simply add your guests to your wedding dashboard and send them personalized invitation links. They can easily RSVP through our beautiful, mobile-friendly RSVP pages.',
+  },
+]
 
 export function LandingPage() {
   const { signIn } = useAuth()
@@ -28,6 +48,29 @@ export function LandingPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-indigo-50">
+      <SEO
+        title="Plan Your Perfect Wedding"
+        description="Create unforgettable memories with AI-powered photo analysis, seamless RSVP management, and real-time coordination tools. Start planning your dream wedding today."
+        url="/"
+        keywords={[
+          'wedding planning',
+          'wedding planner app',
+          'RSVP management',
+          'wedding photos',
+          'AI photo analysis',
+          'wedding coordination',
+          'wedding timeline',
+          'guest management',
+          'wedding invitations',
+          'wedding planning tools',
+        ]}
+        structuredData={[
+          organizationSchema,
+          websiteSchema,
+          softwareApplicationSchema,
+          generateFAQSchema(landingPageFAQs),
+        ]}
+      />
       {/* Header */}
       <header className="bg-white/80 backdrop-blur-sm border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

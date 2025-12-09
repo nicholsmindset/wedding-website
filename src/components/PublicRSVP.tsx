@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/Card'
 import { Calendar, MapPin, Heart, CheckCircle, XCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import { isTokenExpired } from '@/lib/tokens'
+import { SEO, generateWeddingEventSchema, generateBreadcrumbSchema } from '@/components/SEO'
 
 interface WeddingEvent {
   id: string
@@ -215,6 +216,11 @@ export function PublicRSVP() {
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-pink-50 to-purple-50 flex items-center justify-center">
+        <SEO
+          title="Loading Invitation"
+          description="Loading your wedding invitation..."
+          noIndex={true}
+        />
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-500 mx-auto mb-4"></div>
           <p className="text-gray-600">Loading your invitation...</p>
@@ -226,6 +232,11 @@ export function PublicRSVP() {
   if (error) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-pink-50 to-purple-50 flex items-center justify-center">
+        <SEO
+          title="Invitation Error"
+          description="There was an issue with your wedding invitation link."
+          noIndex={true}
+        />
         <Card className="max-w-md w-full mx-4 p-8 text-center">
           <XCircle className="h-16 w-16 text-red-500 mx-auto mb-4" />
           <h1 className="text-2xl font-bold text-gray-900 mb-2">Oops!</h1>
@@ -241,6 +252,11 @@ export function PublicRSVP() {
   if (rsvpSubmitted) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-pink-50 to-purple-50 flex items-center justify-center">
+        <SEO
+          title={wedding ? `RSVP Received - ${wedding.title}` : 'RSVP Received'}
+          description="Thank you for your RSVP! Your response has been recorded."
+          noIndex={true}
+        />
         <Card className="max-w-md w-full mx-4 p-8 text-center">
           <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
           <h1 className="text-2xl font-bold text-gray-900 mb-2">Thank You!</h1>
@@ -264,8 +280,45 @@ export function PublicRSVP() {
     )
   }
 
+  const rsvpStructuredData = wedding
+    ? [
+        generateWeddingEventSchema({
+          title: wedding.title,
+          description: wedding.description,
+          date: wedding.date,
+          venue_name: wedding.venue_name,
+          venue_address: wedding.venue_address,
+          url: `/rsvp/${weddingId}`,
+        }),
+        generateBreadcrumbSchema([
+          { name: 'Home', url: '/' },
+          { name: wedding.title, url: `/rsvp/${weddingId}` },
+        ]),
+      ]
+    : []
+
+  const formattedDate = wedding?.date
+    ? new Date(wedding.date).toLocaleDateString('en-US', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      })
+    : ''
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-pink-50 to-purple-50">
+      <SEO
+        title={wedding ? `RSVP to ${wedding.title}` : 'Wedding RSVP'}
+        description={
+          wedding
+            ? `You're invited to ${wedding.title}${formattedDate ? ` on ${formattedDate}` : ''}${wedding.venue_name ? ` at ${wedding.venue_name}` : ''}. RSVP now to confirm your attendance.`
+            : 'RSVP to this wedding celebration. Confirm your attendance and let the couple know you\'ll be there.'
+        }
+        url={`/rsvp/${weddingId}`}
+        type="event"
+        structuredData={rsvpStructuredData}
+      />
       <div className="max-w-4xl mx-auto px-4 py-8">
         {/* Header */}
         <div className="text-center mb-8">
